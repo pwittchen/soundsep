@@ -3,7 +3,7 @@ app, which removes vocals from the song in the youtube video
 
 ## development
 
-prepare environment (replace python path below with your own path):
+prepare environment (replace python path below with your own python3.8 path):
 
 ```
 brew install virtualenvwrapper
