@@ -2,7 +2,6 @@ import argparse
 import yt_dlp
 import subprocess
 import os
-import sys
 
 def download_video(url, output_path):
     ydl_opts = {
