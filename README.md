@@ -44,7 +44,7 @@ if you want to create "empty" video with generated accompaniment, please use the
 python emptyvideo.mp3
 ```
 
-please note: you need to run soundsep.py script first
+please note: you need to run `soundsep.py` script first in order to have input file for the `emptyvideo.py` script
 
 ## cleanup
 
