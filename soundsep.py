@@ -58,5 +58,5 @@ if __name__ == "__main__":
     remove_vocals("output/tmp/music.mp3", "output")
     convert_wav_to_mp3("output/music/accompaniment.wav", "output/music/mp3/accompaniment.mp3")
     convert_wav_to_mp3("output/music/vocals.wav", "output/music/mp3/vocals.mp3")
-    create_empty_mkv_with_audio("output/music/mp3/accompaniment.mp3", "output/tmp/empty_video_with_music.mkv")
+    create_empty_mkv_with_audio("output/music/mp3/accompaniment.mp3", "output/tmp/empty_video_with_music_without_vocals.mkv")
     print("process completed, please check output/ directory")
