@@ -27,7 +27,6 @@ workon soundsep
 ## usage
 
 ```
-workon soundsep
 python soundsep.py <url>
 ```
 
