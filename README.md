@@ -36,6 +36,16 @@ e.g.
 python soundsep.py "https://www.youtube.com/watch?v=cw1B4NRvosE"
 ```
 
+and then check `output/` directory
+
+if you want to create "empty" video with generated accompaniment, please use the following script:
+
+```
+python emptyvideo.mp3
+```
+
+please note: you need to run soundsep.py script first
+
 ## cleanup
 
 cleaning output:
