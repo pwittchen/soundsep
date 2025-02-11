@@ -23,7 +23,6 @@ def convert_wav_to_mp3(input_file, output_file):
         "ffmpeg", "-i", input_file, "-b:a", "192k", output_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-
 def remove_vocals(mp3_file, output_folder):
     subprocess.run([
         "spleeter", "separate", "-p", "spleeter:2stems", "-o", output_folder, mp3_file
