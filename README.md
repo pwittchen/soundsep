@@ -51,11 +51,17 @@ please note: you need to run `soundsep.py` script first in order to have input f
 cleaning output:
 
 ```
-./clean.sh
+./clean_output.sh
 ```
 
-cleaning pretrained models
+cleaning pretrained models:
 
 ```
 ./clean_models.sh
+```
+
+cleaning everything:
+
+```
+./clean.sh
 ```
