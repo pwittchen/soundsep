@@ -23,3 +23,30 @@ to activate env again:
 ```
 workon soundsep
 ```
+
+## usage
+
+```
+workon soundsep
+python soundsep.py <url>
+```
+
+e.g.
+
+```
+python soundsep.py "https://www.youtube.com/watch?v=cw1B4NRvosE"
+```
+
+## cleanup
+
+cleaning output:
+
+```
+./clean.sh
+```
+
+cleaning pretrained models
+
+```
+./clean_models.sh
+```
