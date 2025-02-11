@@ -29,7 +29,7 @@ def remove_vocals(mp3_file, output_folder):
     ], check=True)
     print(f"Processing complete. Separated files are in: {output_folder}")
 
-def create_empty_mkv_with_audio(mp3_file, output_mkv="output.mkv", resolution="1280x720"):
+def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
     duration_cmd = [
         "ffprobe", "-i", mp3_file, "-show_entries", "format=duration",
         "-v", "quiet", "-of", "csv=p=0"
