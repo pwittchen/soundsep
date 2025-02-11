@@ -26,7 +26,6 @@ def remove_vocals(mp3_file, output_folder):
     subprocess.run([
         "spleeter", "separate", "-p", "spleeter:2stems", "-o", output_folder, mp3_file
     ], check=True)
-    print(f"Processing complete. Separated files are in: {output_folder}")
 
 def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
     duration_cmd = [
