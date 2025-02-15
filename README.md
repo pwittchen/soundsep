@@ -1,6 +1,8 @@
 # soundsep
 app, which removes vocals from the song in the youtube video
 
+in the output you get downloaded video, music from the video, separated vocals and music, empty video with extracted music without vocals
+
 ## development
 
 prepare environment (replace python path below with your own python3.8 path):
