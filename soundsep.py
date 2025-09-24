@@ -52,7 +52,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     remove_output_dir()
     download_video(args.url, "output/tmp")
-    convert_mkv_to_mp3("output/tmp/video.mkv", "output/tmp/music.mp3")
+    convert_mkv_to_mp3("output/tmp/video.webm", "output/tmp/music.mp3")
     remove_vocals("output/tmp/music.mp3", "output")
     convert_wav_to_mp3("output/music/accompaniment.wav", "output/music/mp3/accompaniment.mp3")
     convert_wav_to_mp3("output/music/vocals.wav", "output/music/mp3/vocals.mp3")

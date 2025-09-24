@@ -58,17 +58,17 @@ and then check `output/` directory
 cleaning output:
 
 ```
-./clean_output.sh
+make clean_output
 ```
 
 cleaning pretrained models:
 
 ```
-./clean_models.sh
+make clean_models -B
 ```
 
 cleaning everything:
 
 ```
-./clean.sh
+make clean
 ```
