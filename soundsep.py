@@ -2,9 +2,48 @@ import argparse
 import subprocess
 import os
 import shutil
+import sys
+import threading
+import itertools
+import time
 from pytubefix import YouTube
 
 __version__ = "1.0.0"
+
+
+class Spinner:
+    def __init__(self, message="Loading..."):
+        self.message = message
+        self.spinning = False
+        self.thread = None
+        self.spinner_chars = itertools.cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+
+    def _spin(self):
+        while self.spinning:
+            char = next(self.spinner_chars)
+            sys.stdout.write(f"\r{char} {self.message}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+
+    def start(self):
+        self.spinning = True
+        self.thread = threading.Thread(target=self._spin)
+        self.thread.start()
+
+    def stop(self, success=True):
+        self.spinning = False
+        if self.thread:
+            self.thread.join()
+        symbol = "✓" if success else "✗"
+        sys.stdout.write(f"\r{symbol} {self.message}\n")
+        sys.stdout.flush()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop(success=exc_type is None)
 
 
 def download_video(url, output_path):
@@ -33,7 +72,7 @@ def convert_wav_to_mp3(input_file, output_file):
 def remove_vocals(mp3_file, output_folder):
     subprocess.run([
         "spleeter", "separate", "-p", "spleeter:2stems", "-o", output_folder, mp3_file
-    ], check=True)
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
@@ -124,38 +163,38 @@ def main():
     mp3_dir = os.path.join(music_dir, "mp3")
 
     print(f"Processing: {args.url}")
-    print(f"Output directory: {output_dir}")
+    print(f"Output directory: {output_dir}\n")
 
     remove_dir(output_dir)
 
-    print("Downloading video...")
-    video_file = download_video(args.url, tmp_dir)
+    with Spinner("Downloading video..."):
+        video_file = download_video(args.url, tmp_dir)
 
-    print("Converting to MP3...")
-    mp3_file = os.path.join(tmp_dir, "music.mp3")
-    convert_to_mp3(video_file, mp3_file)
+    with Spinner("Converting to MP3..."):
+        mp3_file = os.path.join(tmp_dir, "music.mp3")
+        convert_to_mp3(video_file, mp3_file)
 
-    print("Separating vocals from music...")
-    remove_vocals(mp3_file, output_dir)
+    with Spinner("Separating vocals from music..."):
+        remove_vocals(mp3_file, output_dir)
 
-    print("Converting separated tracks to MP3...")
-    convert_wav_to_mp3(
-        os.path.join(music_dir, "accompaniment.wav"),
-        os.path.join(mp3_dir, "accompaniment.mp3")
-    )
-    convert_wav_to_mp3(
-        os.path.join(music_dir, "vocals.wav"),
-        os.path.join(mp3_dir, "vocals.mp3")
-    )
+    with Spinner("Converting separated tracks to MP3..."):
+        convert_wav_to_mp3(
+            os.path.join(music_dir, "accompaniment.wav"),
+            os.path.join(mp3_dir, "accompaniment.mp3")
+        )
+        convert_wav_to_mp3(
+            os.path.join(music_dir, "vocals.wav"),
+            os.path.join(mp3_dir, "vocals.mp3")
+        )
 
-    print("Creating video with music (no vocals)...")
-    create_empty_mkv_with_audio(
-        os.path.join(mp3_dir, "accompaniment.mp3"),
-        os.path.join(tmp_dir, "empty_video_with_music_without_vocals.mkv"),
-        args.resolution
-    )
+    with Spinner("Creating video with music (no vocals)..."):
+        create_empty_mkv_with_audio(
+            os.path.join(mp3_dir, "accompaniment.mp3"),
+            os.path.join(tmp_dir, "empty_video_with_music_without_vocals.mkv"),
+            args.resolution
+        )
 
-    print(f"Done! Check the '{output_dir}/' directory for results.")
+    print(f"\n✓ Done! Check the '{output_dir}/' directory for results.")
 
 
 if __name__ == "__main__":
