@@ -7,9 +7,12 @@ def download_video(url, output_path):
     os.makedirs(output_path, exist_ok=True)
     yt = YouTube(url)
     stream = yt.streams.filter(only_audio=True).order_by("abr").desc().first()
-    stream.download(output_path=output_path, filename="video.mp4")
+    ext = stream.mime_type.split("/")[-1]
+    filename = f"video.{ext}"
+    stream.download(output_path=output_path, filename=filename)
+    return os.path.join(output_path, filename)
 
-def convert_mkv_to_mp3(input_file, output_file):
+def convert_to_mp3(input_file, output_file):
     subprocess.run([
         "ffmpeg", "-i", input_file, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", output_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -49,8 +52,8 @@ if __name__ == "__main__":
     parser.add_argument("url", help="the YouTube video URL to download.")
     args = parser.parse_args()
     remove_output_dir()
-    download_video(args.url, "output/tmp")
-    convert_mkv_to_mp3("output/tmp/video.mp4", "output/tmp/music.mp3")
+    video_file = download_video(args.url, "output/tmp")
+    convert_to_mp3(video_file, "output/tmp/music.mp3")
     remove_vocals("output/tmp/music.mp3", "output")
     convert_wav_to_mp3("output/music/accompaniment.wav", "output/music/mp3/accompaniment.mp3")
     convert_wav_to_mp3("output/music/vocals.wav", "output/music/mp3/vocals.mp3")
