@@ -1,5 +1,5 @@
 # soundsep
-app, which removes vocals from the song in the youtube video
+removes vocals from the song in the youtube video
 
 ## functionality
 
