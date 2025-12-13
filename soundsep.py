@@ -1,15 +1,13 @@
 import argparse
-import yt_dlp
 import subprocess
 import os
+from pytubefix import YouTube
 
 def download_video(url, output_path):
-    ydl_opts = {
-        "format": "bestvideo+bestaudio",
-        "outtmpl": f"{output_path}/video.%(ext)s"
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    os.makedirs(output_path, exist_ok=True)
+    yt = YouTube(url)
+    stream = yt.streams.filter(only_audio=True).order_by("abr").desc().first()
+    stream.download(output_path=output_path, filename="video.mp4")
 
 def convert_mkv_to_mp3(input_file, output_file):
     subprocess.run([
@@ -52,7 +50,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     remove_output_dir()
     download_video(args.url, "output/tmp")
-    convert_mkv_to_mp3("output/tmp/video.webm", "output/tmp/music.mp3")
+    convert_mkv_to_mp3("output/tmp/video.mp4", "output/tmp/music.mp3")
     remove_vocals("output/tmp/music.mp3", "output")
     convert_wav_to_mp3("output/music/accompaniment.wav", "output/music/mp3/accompaniment.mp3")
     convert_wav_to_mp3("output/music/vocals.wav", "output/music/mp3/vocals.mp3")
