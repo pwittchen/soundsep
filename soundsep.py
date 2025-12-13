@@ -1,7 +1,11 @@
 import argparse
 import subprocess
 import os
+import shutil
 from pytubefix import YouTube
+
+__version__ = "1.0.0"
+
 
 def download_video(url, output_path):
     os.makedirs(output_path, exist_ok=True)
@@ -12,21 +16,25 @@ def download_video(url, output_path):
     stream.download(output_path=output_path, filename=filename)
     return os.path.join(output_path, filename)
 
+
 def convert_to_mp3(input_file, output_file):
     subprocess.run([
         "ffmpeg", "-i", input_file, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", output_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
 def convert_wav_to_mp3(input_file, output_file):
-    subprocess.run(["mkdir", "-p", "output/music/mp3"])
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     subprocess.run([
         "ffmpeg", "-i", input_file, "-b:a", "192k", output_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
 def remove_vocals(mp3_file, output_folder):
     subprocess.run([
         "spleeter", "separate", "-p", "spleeter:2stems", "-o", output_folder, mp3_file
     ], check=True)
+
 
 def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
     duration_cmd = [
@@ -41,21 +49,114 @@ def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
     ]
     subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def remove_output_dir():
-    if os.path.exists("output"):
-        subprocess.run(["rm", "-rf", "output"])
+
+def remove_dir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+        print(f"Removed: {path}")
     else:
-        print("Directory output/ does not exist.")
+        print(f"Directory does not exist: {path}")
+
+
+def clean(target, output_dir="output"):
+    if target == "output":
+        remove_dir(output_dir)
+    elif target == "models":
+        remove_dir("pretrained_models")
+    elif target == "all":
+        remove_dir(output_dir)
+        remove_dir("pretrained_models")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="soundsep",
+        description="Download a YouTube video and separate vocals from the music.",
+        epilog="Example: python soundsep.py -u 'https://www.youtube.com/watch?v=VIDEO_ID'",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "-u", "--url",
+        metavar="URL",
+        help="YouTube video URL to process"
+    )
+    parser.add_argument(
+        "-o", "--output",
+        default="output",
+        metavar="DIR",
+        help="output directory (default: output)"
+    )
+    parser.add_argument(
+        "-r", "--resolution",
+        default="1280x720",
+        metavar="WxH",
+        help="resolution for the generated video (default: 1280x720)"
+    )
+    parser.add_argument(
+        "-c", "--clean",
+        choices=["output", "models", "all"],
+        metavar="TARGET",
+        help="clean up files: output, models, or all"
+    )
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version=f"%(prog)s {__version__}"
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    if args.clean:
+        clean(args.clean, args.output)
+        return
+
+    if not args.url:
+        print("Error: --url is required when not using --clean")
+        print("Run with --help for usage information")
+        return
+
+    output_dir = args.output
+    tmp_dir = os.path.join(output_dir, "tmp")
+    music_dir = os.path.join(output_dir, "music")
+    mp3_dir = os.path.join(music_dir, "mp3")
+
+    print(f"Processing: {args.url}")
+    print(f"Output directory: {output_dir}")
+
+    remove_dir(output_dir)
+
+    print("Downloading video...")
+    video_file = download_video(args.url, tmp_dir)
+
+    print("Converting to MP3...")
+    mp3_file = os.path.join(tmp_dir, "music.mp3")
+    convert_to_mp3(video_file, mp3_file)
+
+    print("Separating vocals from music...")
+    remove_vocals(mp3_file, output_dir)
+
+    print("Converting separated tracks to MP3...")
+    convert_wav_to_mp3(
+        os.path.join(music_dir, "accompaniment.wav"),
+        os.path.join(mp3_dir, "accompaniment.mp3")
+    )
+    convert_wav_to_mp3(
+        os.path.join(music_dir, "vocals.wav"),
+        os.path.join(mp3_dir, "vocals.mp3")
+    )
+
+    print("Creating video with music (no vocals)...")
+    create_empty_mkv_with_audio(
+        os.path.join(mp3_dir, "accompaniment.mp3"),
+        os.path.join(tmp_dir, "empty_video_with_music_without_vocals.mkv"),
+        args.resolution
+    )
+
+    print(f"Done! Check the '{output_dir}/' directory for results.")
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Download a YouTube video, convert it into mp3 and remove vocals from it")
-    parser.add_argument("url", help="the YouTube video URL to download.")
-    args = parser.parse_args()
-    remove_output_dir()
-    video_file = download_video(args.url, "output/tmp")
-    convert_to_mp3(video_file, "output/tmp/music.mp3")
-    remove_vocals("output/tmp/music.mp3", "output")
-    convert_wav_to_mp3("output/music/accompaniment.wav", "output/music/mp3/accompaniment.mp3")
-    convert_wav_to_mp3("output/music/vocals.wav", "output/music/mp3/vocals.mp3")
-    create_empty_mkv_with_audio("output/music/mp3/accompaniment.mp3", "output/tmp/empty_video_with_music_without_vocals.mkv")
-    print("process completed, please check output/ directory")
+    main()

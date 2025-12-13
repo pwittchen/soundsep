@@ -43,33 +43,64 @@ workon soundsep
 ## usage
 
 ```
-python soundsep.py <url>
+python soundsep.py -u <youtube-url> [options]
 ```
 
-e.g.
+### options
+
+| Option | Description |
+|--------|-------------|
+| `-u`, `--url` | YouTube video URL to process |
+| `-o`, `--output` | Output directory (default: `output`) |
+| `-r`, `--resolution` | Resolution for generated video (default: `1280x720`) |
+| `-c`, `--clean` | Clean up files: `output`, `models`, or `all` |
+| `-v`, `--version` | Show version number |
+| `-h`, `--help` | Show help message |
+
+### examples
+
+basic usage:
 
 ```
-python soundsep.py "https://www.youtube.com/watch?v=cw1B4NRvosE"
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE"
 ```
 
-and then check `output/` directory
+with custom output directory:
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -o my_output
+```
+
+with custom resolution:
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -r 1920x1080
+```
+
+show help:
+
+```
+python soundsep.py --help
+```
+
+after processing, check the output directory for results
 
 ## cleanup
 
-cleaning output:
+clean output directory:
 
 ```
-make clean_output
+python soundsep.py --clean output
 ```
 
-cleaning pretrained models:
+clean pretrained models:
 
 ```
-make clean_models -B
+python soundsep.py --clean models
 ```
 
-cleaning everything:
+clean everything:
 
 ```
-make clean
+python soundsep.py --clean all
 ```
