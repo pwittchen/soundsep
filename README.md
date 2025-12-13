@@ -1,4 +1,4 @@
-# soundsep
+# soundsep 🎤
 removes vocals from the song in the youtube video
 
 ## functionality
