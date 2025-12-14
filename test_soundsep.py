@@ -7,6 +7,7 @@ import pytest
 
 from soundsep import (
     __version__,
+    DEFAULT_VIDEO_RESOLUTION,
     STEM_MODES,
     Spinner,
     parse_args,
@@ -63,16 +64,6 @@ class TestParseArgs:
         with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-o", "my_output"]):
             args = parse_args()
             assert args.output == "my_output"
-
-    def test_default_resolution(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
-            args = parse_args()
-            assert args.resolution == "1280x720"
-
-    def test_custom_resolution(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-r", "1920x1080"]):
-            args = parse_args()
-            assert args.resolution == "1920x1080"
 
     def test_default_tempo(self):
         with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
@@ -314,14 +305,4 @@ class TestCreateEmptyMkvWithAudio:
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "ffmpeg" in args
-        assert "1280x720" in str(args)  # default resolution
-
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.subprocess.check_output")
-    @patch("soundsep.os.makedirs")
-    def test_create_empty_mkv_custom_resolution(self, mock_makedirs, mock_check_output, mock_run):
-        mock_check_output.return_value = b"120.5\n"
-        create_empty_mkv_with_audio("/input/audio.mp3", "/output/video.mkv", resolution="1920x1080")
-
-        args = mock_run.call_args[0][0]
-        assert "1920x1080" in str(args)
+        assert DEFAULT_VIDEO_RESOLUTION in str(args)  # default resolution

@@ -9,6 +9,7 @@ import time
 from pytubefix import YouTube
 
 __version__ = "1.0.0"
+DEFAULT_VIDEO_RESOLUTION = "1280x720"
 
 
 class Spinner:
@@ -95,7 +96,7 @@ def separate_audio(mp3_file, output_folder, mode="2stems"):
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def create_empty_mkv_with_audio(mp3_file, output_file, resolution="1280x720"):
+def create_empty_mkv_with_audio(mp3_file, output_file):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     duration_cmd = [
         "ffprobe", "-i", mp3_file, "-show_entries", "format=duration",
@@ -103,7 +104,7 @@ def create_empty_mkv_with_audio(mp3_file, output_file, resolution="1280x720"):
     ]
     duration = subprocess.check_output(duration_cmd).decode().strip()
     ffmpeg_cmd = [
-        "ffmpeg", "-f", "lavfi", "-i", f"color=c=black:s={resolution}:d={duration}",
+        "ffmpeg", "-f", "lavfi", "-i", f"color=c=black:s={DEFAULT_VIDEO_RESOLUTION}:d={duration}",
         "-i", mp3_file, "-c:v", "libx264", "-c:a", "aac", "-strict", "experimental",
         "-shortest", output_file
     ]
@@ -145,12 +146,6 @@ def parse_args():
         default="output",
         metavar="DIR",
         help="output directory (default: output)"
-    )
-    parser.add_argument(
-        "-r", "--resolution",
-        default="1280x720",
-        metavar="WxH",
-        help="resolution for the generated video (default: 1280x720)"
     )
     parser.add_argument(
         "-c", "--clean",
@@ -237,7 +232,6 @@ def main():
             create_empty_mkv_with_audio(
                 os.path.join(mp3_dir, "accompaniment.mp3"),
                 os.path.join(video_dir, "accompaniment.mkv"),
-                args.resolution
             )
 
     print(f"\n✓ Done! Check the '{output_dir}/' directory for results.")
