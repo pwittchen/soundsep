@@ -1,17 +1,6 @@
 # soundsep 🎤
+
 removes vocals from the song in the youtube video
-
-## functionality
-
-in the input you provide:
-- youtube url
-
-in the output you get:
-- downloaded video
-- song from the video
-- separated vocals
-- separated music
-- empty video with black screen and extracted music without vocals
 
 ## development
 
