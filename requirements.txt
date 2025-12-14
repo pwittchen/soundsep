@@ -1,3 +1,3 @@
-pytubefix==10.3.6
+pytubefix
 ffmpeg==1.4
 spleeter==2.3.2
