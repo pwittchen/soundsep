@@ -1,6 +1,6 @@
 # soundsep 🎤
 
-removes vocals from the song in the youtube video
+separates audio from YouTube videos into stems (vocals, instruments)
 
 ## development
 
@@ -43,9 +43,18 @@ python soundsep.py -u <youtube-url> [options]
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-r`, `--resolution` | Resolution for generated video (default: `1280x720`) |
 | `-s`, `--speed` | Speed factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
+| `-m`, `--mode` | Separation mode: `2stems`, `4stems`, or `5stems` (default: `2stems`) |
 | `-c`, `--clean` | Clean up files: `output`, `models`, or `all` |
 | `-v`, `--version` | Show version number |
 | `-h`, `--help` | Show help message |
+
+### separation modes
+
+| Mode | Stems |
+|------|-------|
+| `2stems` | vocals, accompaniment |
+| `4stems` | vocals, drums, bass, other |
+| `5stems` | vocals, drums, bass, piano, other |
 
 ### examples
 
@@ -83,6 +92,18 @@ speed up output to 120%:
 
 ```
 python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 1.2
+```
+
+separate into 4 stems (vocals, drums, bass, other):
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -m 4stems
+```
+
+separate into 5 stems (vocals, drums, bass, piano, other):
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -m 5stems
 ```
 
 show help:

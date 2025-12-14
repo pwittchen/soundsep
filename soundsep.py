@@ -82,9 +82,16 @@ def convert_wav_to_mp3(input_file, output_file, speed=1.0):
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def remove_vocals(mp3_file, output_folder):
+STEM_MODES = {
+    "2stems": ["vocals", "accompaniment"],
+    "4stems": ["vocals", "drums", "bass", "other"],
+    "5stems": ["vocals", "drums", "bass", "piano", "other"],
+}
+
+
+def separate_audio(mp3_file, output_folder, mode="2stems"):
     subprocess.run([
-        "spleeter", "separate", "-p", "spleeter:2stems", "-o", output_folder, mp3_file
+        "spleeter", "separate", "-p", f"spleeter:{mode}", "-o", output_folder, mp3_file
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -124,8 +131,8 @@ def clean(target, output_dir="output"):
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="soundsep",
-        description="Download a YouTube video and separate vocals from the music.",
-        epilog="Example: python soundsep.py -u 'https://www.youtube.com/watch?v=VIDEO_ID'",
+        description="Download a YouTube video and separate audio into stems (vocals, instruments).",
+        epilog="Example: python soundsep.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
@@ -159,6 +166,13 @@ def parse_args():
         help="speed factor for output audio (default: 1.0, use < 1.0 to slow down, e.g., 0.8 for 80%% speed)"
     )
     parser.add_argument(
+        "-m", "--mode",
+        choices=["2stems", "4stems", "5stems"],
+        default="2stems",
+        metavar="MODE",
+        help="separation mode: 2stems (vocals/accompaniment), 4stems (vocals/drums/bass/other), 5stems (vocals/drums/bass/piano/other). Default: 2stems"
+    )
+    parser.add_argument(
         "-v", "--version",
         action="version",
         version=f"%(prog)s {__version__}"
@@ -184,8 +198,12 @@ def main():
     mp3_dir = os.path.join(music_dir, "mp3")
     video_dir = os.path.join(output_dir, "video")
 
+    mode = args.mode
+    stems = STEM_MODES[mode]
+
     print(f"Processing: {args.url}")
-    print(f"Output directory: {output_dir}\n")
+    print(f"Output directory: {output_dir}")
+    print(f"Separation mode: {mode} ({', '.join(stems)})\n")
 
     remove_dir(output_dir)
 
@@ -196,32 +214,31 @@ def main():
         mp3_file = os.path.join(tmp_dir, "music.mp3")
         convert_to_mp3(video_file, mp3_file)
 
-    with Spinner("Separating vocals from music..."):
-        remove_vocals(mp3_file, output_dir)
+    with Spinner(f"Separating audio ({mode})..."):
+        separate_audio(mp3_file, output_dir, mode)
 
     speed_msg = "Converting separated tracks to MP3..."
     if args.speed != 1.0:
         speed_msg = f"Converting separated tracks to MP3 (speed: {args.speed}x)..."
     with Spinner(speed_msg):
-        convert_wav_to_mp3(
-            os.path.join(music_dir, "accompaniment.wav"),
-            os.path.join(mp3_dir, "accompaniment.mp3"),
-            args.speed
-        )
-        convert_wav_to_mp3(
-            os.path.join(music_dir, "vocals.wav"),
-            os.path.join(mp3_dir, "vocals.mp3"),
-            args.speed
-        )
+        for stem in stems:
+            convert_wav_to_mp3(
+                os.path.join(music_dir, f"{stem}.wav"),
+                os.path.join(mp3_dir, f"{stem}.mp3"),
+                args.speed
+            )
 
-    with Spinner("Creating video with music (no vocals)..."):
-        create_empty_mkv_with_audio(
-            os.path.join(mp3_dir, "accompaniment.mp3"),
-            os.path.join(video_dir, "empty_video_with_music_without_vocals.mkv"),
-            args.resolution
-        )
+    # Create video only for 2stems mode (accompaniment = complete music without vocals)
+    if mode == "2stems":
+        with Spinner("Creating video for accompaniment track..."):
+            create_empty_mkv_with_audio(
+                os.path.join(mp3_dir, "accompaniment.mp3"),
+                os.path.join(video_dir, "accompaniment.mkv"),
+                args.resolution
+            )
 
     print(f"\n✓ Done! Check the '{output_dir}/' directory for results.")
+    print(f"  Separated stems: {', '.join(stems)}")
 
 
 if __name__ == "__main__":
