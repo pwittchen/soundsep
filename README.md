@@ -29,6 +29,14 @@ to activate env again:
 workon soundsep
 ```
 
+## testing
+
+run all tests (`-v` param for verbose):
+
+```
+pytest -v
+```
+
 ## usage
 
 ```
@@ -133,3 +141,5 @@ clean everything:
 ```
 python soundsep.py --clean all
 ```
+
+
