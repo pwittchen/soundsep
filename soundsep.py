@@ -170,7 +170,10 @@ def parse_args():
         choices=["2stems", "4stems", "5stems"],
         default="2stems",
         metavar="MODE",
-        help="separation mode: 2stems (vocals/accompaniment), 4stems (vocals/drums/bass/other), 5stems (vocals/drums/bass/piano/other). Default: 2stems"
+        help="separation mode: 2stems (vocals/accompaniment),"
+             "4stems (vocals/drums/bass/other),"
+             "5stems (vocals/drums/bass/piano/other)."
+             "Default: 2stems"
     )
     parser.add_argument(
         "-v", "--version",
