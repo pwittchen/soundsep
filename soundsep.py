@@ -88,7 +88,8 @@ def remove_vocals(mp3_file, output_folder):
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
+def create_empty_mkv_with_audio(mp3_file, output_file, resolution="1280x720"):
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     duration_cmd = [
         "ffprobe", "-i", mp3_file, "-show_entries", "format=duration",
         "-v", "quiet", "-of", "csv=p=0"
@@ -97,7 +98,7 @@ def create_empty_mkv_with_audio(mp3_file, output_mkv, resolution="1280x720"):
     ffmpeg_cmd = [
         "ffmpeg", "-f", "lavfi", "-i", f"color=c=black:s={resolution}:d={duration}",
         "-i", mp3_file, "-c:v", "libx264", "-c:a", "aac", "-strict", "experimental",
-        "-shortest", output_mkv
+        "-shortest", output_file
     ]
     subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -181,6 +182,7 @@ def main():
     tmp_dir = os.path.join(output_dir, "tmp")
     music_dir = os.path.join(output_dir, "music")
     mp3_dir = os.path.join(music_dir, "mp3")
+    video_dir = os.path.join(output_dir, "video")
 
     print(f"Processing: {args.url}")
     print(f"Output directory: {output_dir}\n")
@@ -215,7 +217,7 @@ def main():
     with Spinner("Creating video with music (no vocals)..."):
         create_empty_mkv_with_audio(
             os.path.join(mp3_dir, "accompaniment.mp3"),
-            os.path.join(tmp_dir, "empty_video_with_music_without_vocals.mkv"),
+            os.path.join(video_dir, "empty_video_with_music_without_vocals.mkv"),
             args.resolution
         )
 
