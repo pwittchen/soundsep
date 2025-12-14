@@ -53,6 +53,7 @@ python soundsep.py -u <youtube-url> [options]
 | `-u`, `--url` | YouTube video URL to process |
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-r`, `--resolution` | Resolution for generated video (default: `1280x720`) |
+| `-s`, `--speed` | Speed factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
 | `-c`, `--clean` | Clean up files: `output`, `models`, or `all` |
 | `-v`, `--version` | Show version number |
 | `-h`, `--help` | Show help message |
@@ -75,6 +76,24 @@ with custom resolution:
 
 ```
 python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -r 1920x1080
+```
+
+slow down output to 80% speed (useful for practicing):
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 0.8
+```
+
+slow down to 50% speed:
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 0.5
+```
+
+speed up output to 120%:
+
+```
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 1.2
 ```
 
 show help:

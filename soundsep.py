@@ -62,11 +62,24 @@ def convert_to_mp3(input_file, output_file):
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def convert_wav_to_mp3(input_file, output_file):
+def convert_wav_to_mp3(input_file, output_file, speed=1.0):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    subprocess.run([
-        "ffmpeg", "-i", input_file, "-b:a", "192k", output_file
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    cmd = ["ffmpeg", "-i", input_file]
+    if speed != 1.0:
+        # atempo filter only accepts values between 0.5 and 2.0
+        # chain multiple filters for values outside this range
+        atempo_filters = []
+        tempo = speed
+        while tempo < 0.5:
+            atempo_filters.append("atempo=0.5")
+            tempo /= 0.5
+        while tempo > 2.0:
+            atempo_filters.append("atempo=2.0")
+            tempo /= 2.0
+        atempo_filters.append(f"atempo={tempo}")
+        cmd.extend(["-af", ",".join(atempo_filters)])
+    cmd.extend(["-b:a", "192k", output_file])
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def remove_vocals(mp3_file, output_folder):
@@ -138,6 +151,13 @@ def parse_args():
         help="clean up files: output, models, or all"
     )
     parser.add_argument(
+        "-s", "--speed",
+        type=float,
+        default=1.0,
+        metavar="FACTOR",
+        help="speed factor for output audio (default: 1.0, use < 1.0 to slow down, e.g., 0.8 for 80%% speed)"
+    )
+    parser.add_argument(
         "-v", "--version",
         action="version",
         version=f"%(prog)s {__version__}"
@@ -177,14 +197,19 @@ def main():
     with Spinner("Separating vocals from music..."):
         remove_vocals(mp3_file, output_dir)
 
-    with Spinner("Converting separated tracks to MP3..."):
+    speed_msg = "Converting separated tracks to MP3..."
+    if args.speed != 1.0:
+        speed_msg = f"Converting separated tracks to MP3 (speed: {args.speed}x)..."
+    with Spinner(speed_msg):
         convert_wav_to_mp3(
             os.path.join(music_dir, "accompaniment.wav"),
-            os.path.join(mp3_dir, "accompaniment.mp3")
+            os.path.join(mp3_dir, "accompaniment.mp3"),
+            args.speed
         )
         convert_wav_to_mp3(
             os.path.join(music_dir, "vocals.wav"),
-            os.path.join(mp3_dir, "vocals.mp3")
+            os.path.join(mp3_dir, "vocals.mp3"),
+            args.speed
         )
 
     with Spinner("Creating video with music (no vocals)..."):
