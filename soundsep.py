@@ -62,21 +62,21 @@ def convert_to_mp3(input_file, output_file):
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def convert_wav_to_mp3(input_file, output_file, speed=1.0):
+def convert_wav_to_mp3(input_file, output_file, tempo=1.0):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     cmd = ["ffmpeg", "-i", input_file]
-    if speed != 1.0:
+    if tempo != 1.0:
         # atempo filter only accepts values between 0.5 and 2.0
         # chain multiple filters for values outside this range
         atempo_filters = []
-        tempo = speed
-        while tempo < 0.5:
+        tempo_value = tempo
+        while tempo_value < 0.5:
             atempo_filters.append("atempo=0.5")
-            tempo /= 0.5
-        while tempo > 2.0:
+            tempo_value /= 0.5
+        while tempo_value > 2.0:
             atempo_filters.append("atempo=2.0")
-            tempo /= 2.0
-        atempo_filters.append(f"atempo={tempo}")
+            tempo_value /= 2.0
+        atempo_filters.append(f"atempo={tempo_value}")
         cmd.extend(["-af", ",".join(atempo_filters)])
     cmd.extend(["-b:a", "192k", output_file])
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -159,11 +159,11 @@ def parse_args():
         help="clean up files: output, models, or all"
     )
     parser.add_argument(
-        "-s", "--speed",
+        "-t", "--tempo",
         type=float,
         default=1.0,
         metavar="FACTOR",
-        help="speed factor for output audio (default: 1.0, use < 1.0 to slow down, e.g., 0.8 for 80%% speed)"
+        help="tempo factor for output audio (default: 1.0, use < 1.0 to slow down, e.g., 0.8 for 80%% tempo)"
     )
     parser.add_argument(
         "-m", "--mode",
@@ -220,15 +220,15 @@ def main():
     with Spinner(f"Separating audio ({mode})..."):
         separate_audio(mp3_file, output_dir, mode)
 
-    speed_msg = "Converting separated tracks to MP3..."
-    if args.speed != 1.0:
-        speed_msg = f"Converting separated tracks to MP3 (speed: {args.speed}x)..."
-    with Spinner(speed_msg):
+    tempo_msg = "Converting separated tracks to MP3..."
+    if args.tempo != 1.0:
+        tempo_msg = f"Converting separated tracks to MP3 (tempo: {args.tempo}x)..."
+    with Spinner(tempo_msg):
         for stem in stems:
             convert_wav_to_mp3(
                 os.path.join(music_dir, f"{stem}.wav"),
                 os.path.join(mp3_dir, f"{stem}.mp3"),
-                args.speed
+                args.tempo
             )
 
     # Create video only for 2stems mode (accompaniment = complete music without vocals)

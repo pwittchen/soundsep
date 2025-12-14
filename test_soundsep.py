@@ -74,15 +74,15 @@ class TestParseArgs:
             args = parse_args()
             assert args.resolution == "1920x1080"
 
-    def test_default_speed(self):
+    def test_default_tempo(self):
         with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
             args = parse_args()
-            assert args.speed == 1.0
+            assert args.tempo == 1.0
 
-    def test_custom_speed(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-s", "0.8"]):
+    def test_custom_tempo(self):
+        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-t", "0.8"]):
             args = parse_args()
-            assert args.speed == 0.8
+            assert args.tempo == 0.8
 
     def test_default_mode(self):
         with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
@@ -200,8 +200,8 @@ class TestClean:
 class TestConvertWavToMp3:
     @patch("soundsep.subprocess.run")
     @patch("soundsep.os.makedirs")
-    def test_convert_without_speed_change(self, mock_makedirs, mock_run):
-        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", speed=1.0)
+    def test_convert_without_tempo_change(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0)
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "ffmpeg" in args
@@ -210,8 +210,8 @@ class TestConvertWavToMp3:
 
     @patch("soundsep.subprocess.run")
     @patch("soundsep.os.makedirs")
-    def test_convert_with_speed_in_range(self, mock_makedirs, mock_run):
-        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", speed=0.8)
+    def test_convert_with_tempo_in_range(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=0.8)
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "-af" in args
@@ -220,24 +220,24 @@ class TestConvertWavToMp3:
 
     @patch("soundsep.subprocess.run")
     @patch("soundsep.os.makedirs")
-    def test_convert_with_speed_below_half(self, mock_makedirs, mock_run):
-        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", speed=0.25)
+    def test_convert_with_tempo_below_half(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=0.25)
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "-af" in args
         af_index = args.index("-af")
-        # Should chain multiple atempo filters for values < 0.5
+        # Should chain multiple atempo filters for values < 0.5 tempo
         assert "atempo=0.5" in args[af_index + 1]
 
     @patch("soundsep.subprocess.run")
     @patch("soundsep.os.makedirs")
-    def test_convert_with_speed_above_two(self, mock_makedirs, mock_run):
-        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", speed=3.0)
+    def test_convert_with_tempo_above_two(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=3.0)
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "-af" in args
         af_index = args.index("-af")
-        # Should chain multiple atempo filters for values > 2.0
+        # Should chain multiple atempo filters for values > 2.0 tempo
         assert "atempo=2.0" in args[af_index + 1]
 
 

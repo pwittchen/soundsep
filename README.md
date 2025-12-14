@@ -50,7 +50,7 @@ python soundsep.py -u <youtube-url> [options]
 | `-u`, `--url` | YouTube video URL to process |
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-r`, `--resolution` | Resolution for generated video (default: `1280x720`) |
-| `-s`, `--speed` | Speed factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
+| `-t`, `--tempo` | Tempo factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
 | `-m`, `--mode` | Separation mode: `2stems`, `4stems`, or `5stems` (default: `2stems`) |
 | `-c`, `--clean` | Clean up files: `output`, `models`, or `all` |
 | `-v`, `--version` | Show version number |
@@ -84,22 +84,22 @@ with custom resolution:
 python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -r 1920x1080
 ```
 
-slow down output to 80% speed (useful for practicing):
+slow down output to 80% tempo (useful for practicing):
 
 ```
-python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 0.8
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -t 0.8
 ```
 
-slow down to 50% speed:
+slow down to 50% tempo:
 
 ```
-python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 0.5
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -t 0.5
 ```
 
-speed up output to 120%:
+increase output tempo to 120%:
 
 ```
-python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -s 1.2
+python soundsep.py -u "https://www.youtube.com/watch?v=cw1B4NRvosE" -t 1.2
 ```
 
 separate into 4 stems (vocals, drums, bass, other):
@@ -141,5 +141,3 @@ clean everything:
 ```
 python soundsep.py --clean all
 ```
-
-
