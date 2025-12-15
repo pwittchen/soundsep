@@ -131,9 +131,9 @@ def clean(target, output_dir="output"):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="soundsep",
+        prog="demix",
         description="Download a YouTube video and separate audio into stems (vocals, instruments).",
-        epilog="Example: python soundsep.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems",
+        epilog="Example: python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(

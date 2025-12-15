@@ -5,7 +5,7 @@ import shutil
 from unittest.mock import patch, MagicMock
 import pytest
 
-from soundsep import (
+from demix import (
     __version__,
     DEFAULT_VIDEO_RESOLUTION,
     STEM_MODES,
@@ -51,57 +51,57 @@ class TestStemModes:
 
 class TestParseArgs:
     def test_url_argument(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://youtube.com/watch?v=test"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"]):
             args = parse_args()
             assert args.url == "https://youtube.com/watch?v=test"
 
     def test_default_output(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://youtube.com/watch?v=test"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"]):
             args = parse_args()
             assert args.output == "output"
 
     def test_custom_output(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-o", "my_output"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-o", "my_output"]):
             args = parse_args()
             assert args.output == "my_output"
 
     def test_default_tempo(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
             args = parse_args()
             assert args.tempo == 1.0
 
     def test_custom_tempo(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-t", "0.8"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-t", "0.8"]):
             args = parse_args()
             assert args.tempo == 0.8
 
     def test_default_mode(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
             args = parse_args()
             assert args.mode == "2stems"
 
     def test_mode_4stems(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-m", "4stems"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-m", "4stems"]):
             args = parse_args()
             assert args.mode == "4stems"
 
     def test_mode_5stems(self):
-        with patch.object(sys, "argv", ["soundsep", "-u", "https://test.com", "-m", "5stems"]):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-m", "5stems"]):
             args = parse_args()
             assert args.mode == "5stems"
 
     def test_clean_argument(self):
-        with patch.object(sys, "argv", ["soundsep", "-c", "output"]):
+        with patch.object(sys, "argv", ["demix", "-c", "output"]):
             args = parse_args()
             assert args.clean == "output"
 
     def test_clean_models(self):
-        with patch.object(sys, "argv", ["soundsep", "-c", "models"]):
+        with patch.object(sys, "argv", ["demix", "-c", "models"]):
             args = parse_args()
             assert args.clean == "models"
 
     def test_clean_all(self):
-        with patch.object(sys, "argv", ["soundsep", "-c", "all"]):
+        with patch.object(sys, "argv", ["demix", "-c", "all"]):
             args = parse_args()
             assert args.clean == "all"
 
@@ -189,8 +189,8 @@ class TestClean:
 
 
 class TestConvertWavToMp3:
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
     def test_convert_without_tempo_change(self, mock_makedirs, mock_run):
         convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0)
         mock_run.assert_called_once()
@@ -199,8 +199,8 @@ class TestConvertWavToMp3:
         assert "-i" in args
         assert "-af" not in args
 
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
     def test_convert_with_tempo_in_range(self, mock_makedirs, mock_run):
         convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=0.8)
         mock_run.assert_called_once()
@@ -209,8 +209,8 @@ class TestConvertWavToMp3:
         af_index = args.index("-af")
         assert "atempo=0.8" in args[af_index + 1]
 
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
     def test_convert_with_tempo_below_half(self, mock_makedirs, mock_run):
         convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=0.25)
         mock_run.assert_called_once()
@@ -220,8 +220,8 @@ class TestConvertWavToMp3:
         # Should chain multiple atempo filters for values < 0.5 tempo
         assert "atempo=0.5" in args[af_index + 1]
 
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
     def test_convert_with_tempo_above_two(self, mock_makedirs, mock_run):
         convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=3.0)
         mock_run.assert_called_once()
@@ -233,7 +233,7 @@ class TestConvertWavToMp3:
 
 
 class TestConvertToMp3:
-    @patch("soundsep.subprocess.run")
+    @patch("demix.subprocess.run")
     def test_convert_to_mp3_calls_ffmpeg(self, mock_run):
         convert_to_mp3("/input/video.mp4", "/output/audio.mp3")
         mock_run.assert_called_once()
@@ -247,7 +247,7 @@ class TestConvertToMp3:
 
 
 class TestSeparateAudio:
-    @patch("soundsep.subprocess.run")
+    @patch("demix.subprocess.run")
     def test_separate_audio_default_mode(self, mock_run):
         separate_audio("/input/music.mp3", "/output")
         mock_run.assert_called_once()
@@ -257,14 +257,14 @@ class TestSeparateAudio:
         assert "-p" in args
         assert "spleeter:2stems" in args
 
-    @patch("soundsep.subprocess.run")
+    @patch("demix.subprocess.run")
     def test_separate_audio_4stems(self, mock_run):
         separate_audio("/input/music.mp3", "/output", mode="4stems")
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "spleeter:4stems" in args
 
-    @patch("soundsep.subprocess.run")
+    @patch("demix.subprocess.run")
     def test_separate_audio_5stems(self, mock_run):
         separate_audio("/input/music.mp3", "/output", mode="5stems")
         mock_run.assert_called_once()
@@ -273,8 +273,8 @@ class TestSeparateAudio:
 
 
 class TestDownloadVideo:
-    @patch("soundsep.YouTube")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.YouTube")
+    @patch("demix.os.makedirs")
     def test_download_video(self, mock_makedirs, mock_youtube):
         mock_stream = MagicMock()
         mock_stream.mime_type = "audio/mp4"
@@ -291,9 +291,9 @@ class TestDownloadVideo:
 
 
 class TestCreateEmptyMkvWithAudio:
-    @patch("soundsep.subprocess.run")
-    @patch("soundsep.subprocess.check_output")
-    @patch("soundsep.os.makedirs")
+    @patch("demix.subprocess.run")
+    @patch("demix.subprocess.check_output")
+    @patch("demix.os.makedirs")
     def test_create_empty_mkv(self, mock_makedirs, mock_check_output, mock_run):
         mock_check_output.return_value = b"120.5\n"
         create_empty_mkv_with_audio("/input/audio.mp3", "/output/video.mkv")
