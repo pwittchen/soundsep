@@ -128,6 +128,33 @@ class TestParseArgs:
             assert args.url is None
             assert args.file is None
 
+    def test_default_transpose(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
+            args = parse_args()
+            assert args.transpose == 0
+
+    def test_custom_transpose_positive(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-p", "5"]):
+            args = parse_args()
+            assert args.transpose == 5
+
+    def test_custom_transpose_negative(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-p", "-7"]):
+            args = parse_args()
+            assert args.transpose == -7
+
+    def test_transpose_long_form(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "--transpose", "12"]):
+            args = parse_args()
+            assert args.transpose == 12
+
+    def test_file_with_tempo_and_transpose(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-t", "0.9", "-p", "-3"]):
+            args = parse_args()
+            assert args.file == "/path/to/song.mp3"
+            assert args.tempo == 0.9
+            assert args.transpose == -3
+
 
 class TestSpinner:
     def test_spinner_init(self):
@@ -253,6 +280,73 @@ class TestConvertWavToMp3:
         af_index = args.index("-af")
         # Should chain multiple atempo filters for values > 2.0 tempo
         assert "atempo=2.0" in args[af_index + 1]
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_without_transpose(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0, transpose=0)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" not in args
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_with_transpose_positive(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0, transpose=5)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" in args
+        af_index = args.index("-af")
+        # pitch_ratio = 2^(5/12) ≈ 1.3348
+        assert "rubberband=pitch=" in args[af_index + 1]
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_with_transpose_negative(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0, transpose=-7)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" in args
+        af_index = args.index("-af")
+        # pitch_ratio = 2^(-7/12) ≈ 0.6674
+        assert "rubberband=pitch=" in args[af_index + 1]
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_with_transpose_octave_up(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0, transpose=12)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" in args
+        af_index = args.index("-af")
+        # pitch_ratio = 2^(12/12) = 2.0 (one octave up)
+        assert "rubberband=pitch=2.0" in args[af_index + 1]
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_with_transpose_octave_down(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=1.0, transpose=-12)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" in args
+        af_index = args.index("-af")
+        # pitch_ratio = 2^(-12/12) = 0.5 (one octave down)
+        assert "rubberband=pitch=0.5" in args[af_index + 1]
+
+    @patch("demix.subprocess.run")
+    @patch("demix.os.makedirs")
+    def test_convert_with_tempo_and_transpose(self, mock_makedirs, mock_run):
+        convert_wav_to_mp3("/input/file.wav", "/output/file.mp3", tempo=0.8, transpose=3)
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "-af" in args
+        af_index = args.index("-af")
+        filter_chain = args[af_index + 1]
+        # Should have both rubberband and atempo in the filter chain
+        assert "rubberband=pitch=" in filter_chain
+        assert "atempo=" in filter_chain
+        # rubberband should come before atempo
+        assert filter_chain.index("rubberband") < filter_chain.index("atempo")
 
 
 class TestConvertToMp3:

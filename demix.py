@@ -79,22 +79,29 @@ def convert_to_mp3(input_file, output_file):
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def convert_wav_to_mp3(input_file, output_file, tempo=1.0):
+def convert_wav_to_mp3(input_file, output_file, tempo=1.0, transpose=0):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     cmd = ["ffmpeg", "-i", input_file]
+    filters = []
+    # Apply transpose (pitch shift) using rubberband filter
+    # Formula: pitch_ratio = 2^(semitones/12)
+    if transpose != 0:
+        pitch_ratio = 2 ** (transpose / 12)
+        filters.append(f"rubberband=pitch={pitch_ratio}")
+    # Apply tempo adjustment using atempo filter
     if tempo != 1.0:
         # atempo filter only accepts values between 0.5 and 2.0
         # chain multiple filters for values outside this range
-        atempo_filters = []
         tempo_value = tempo
         while tempo_value < 0.5:
-            atempo_filters.append("atempo=0.5")
+            filters.append("atempo=0.5")
             tempo_value /= 0.5
         while tempo_value > 2.0:
-            atempo_filters.append("atempo=2.0")
+            filters.append("atempo=2.0")
             tempo_value /= 2.0
-        atempo_filters.append(f"atempo={tempo_value}")
-        cmd.extend(["-af", ",".join(atempo_filters)])
+        filters.append(f"atempo={tempo_value}")
+    if filters:
+        cmd.extend(["-af", ",".join(filters)])
     cmd.extend(["-b:a", "192k", output_file])
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -189,6 +196,13 @@ def parse_args():
         help="tempo factor for output audio (default: 1.0, use < 1.0 to slow down, e.g., 0.8 for 80%% tempo)"
     )
     parser.add_argument(
+        "-p", "--transpose",
+        type=int,
+        default=0,
+        metavar="SEMITONES",
+        help="transpose pitch by semitones (default: 0, range: -12 to +12, e.g., -5 for 5 semitones down)"
+    )
+    parser.add_argument(
         "-m", "--mode",
         choices=["2stems", "4stems", "5stems"],
         default="2stems",
@@ -268,15 +282,22 @@ def main():
     with Spinner(f"Separating audio ({mode})..."):
         separate_audio(mp3_file, output_dir, mode)
 
-    tempo_msg = "Converting separated tracks to MP3..."
+    convert_msg = "Converting separated tracks to MP3..."
+    effects = []
     if args.tempo != 1.0:
-        tempo_msg = f"Converting separated tracks to MP3 (tempo: {args.tempo}x)..."
-    with Spinner(tempo_msg):
+        effects.append(f"tempo: {args.tempo}x")
+    if args.transpose != 0:
+        sign = "+" if args.transpose > 0 else ""
+        effects.append(f"transpose: {sign}{args.transpose} semitones")
+    if effects:
+        convert_msg = f"Converting separated tracks to MP3 ({', '.join(effects)})..."
+    with Spinner(convert_msg):
         for stem in stems:
             convert_wav_to_mp3(
                 os.path.join(music_dir, f"{stem}.wav"),
                 os.path.join(mp3_dir, f"{stem}.mp3"),
-                args.tempo
+                args.tempo,
+                args.transpose
             )
 
     # Create video only for 2stems mode (accompaniment = complete music without vocals)

@@ -58,6 +58,7 @@ python demix.py -f <audio-file> [options]
 | `-f`, `--file` | Local audio file to process (mp3, wav, flac, etc.) |
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-t`, `--tempo` | Tempo factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
+| `-p`, `--transpose` | Transpose pitch by semitones (default: `0`, range: `-12` to `+12`) |
 | `-m`, `--mode` | Separation mode: `2stems`, `4stems`, or `5stems` (default: `2stems`) |
 | `-c`, `--clean` | Clean up files: `output`, `models`, or `all` |
 | `-v`, `--version` | Show version number |

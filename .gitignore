@@ -173,3 +173,6 @@ cython_debug/
 # configuration for this script
 output/
 pretrained_models/
+
+# claude code
+.claude/settings.local.json
