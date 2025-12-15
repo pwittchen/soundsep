@@ -35,7 +35,7 @@ class Spinner:
         self.spinning = False
         if self.thread:
             self.thread.join()
-        symbol = "✓" if success else "✗"
+        symbol = "\033[32m✓\033[0m" if success else "\033[31m✗\033[0m"
         sys.stdout.write(f"\r{symbol} {self.message}\n")
         sys.stdout.flush()
 
@@ -234,7 +234,7 @@ def main():
                 os.path.join(video_dir, "accompaniment.mkv"),
             )
 
-    print(f"\n✓ Done! Check the '{output_dir}/' directory for results.")
+    print(f"\n\033[32m✓\033[0m Done! Check the '{output_dir}/' directory for results.")
     print(f"  Separated stems: {', '.join(stems)}")
 
 
