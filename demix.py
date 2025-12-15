@@ -132,14 +132,21 @@ def clean(target, output_dir="output"):
 def parse_args():
     parser = argparse.ArgumentParser(
         prog="demix",
-        description="Download a YouTube video and separate audio into stems (vocals, instruments).",
-        epilog="Example: python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems",
+        description="Separate audio into stems (vocals, instruments) from a YouTube video or local audio file.",
+        epilog="Examples:\n"
+               "  python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems\n"
+               "  python demix.py -f /path/to/song.mp3 -m 2stems",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "-u", "--url",
         metavar="URL",
         help="YouTube video URL to process"
+    )
+    parser.add_argument(
+        "-f", "--file",
+        metavar="FILE",
+        help="local audio file to process (mp3, wav, flac, etc.)"
     )
     parser.add_argument(
         "-o", "--output",
@@ -185,9 +192,18 @@ def main():
         clean(args.clean, args.output)
         return
 
-    if not args.url:
-        print("Error: --url is required when not using --clean")
+    if not args.url and not args.file:
+        print("Error: --url or --file is required when not using --clean")
         print("Run with --help for usage information")
+        return
+
+    if args.url and args.file:
+        print("Error: --url and --file cannot be used together")
+        print("Run with --help for usage information")
+        return
+
+    if args.file and not os.path.isfile(args.file):
+        print(f"Error: File not found: {args.file}")
         return
 
     output_dir = args.output
@@ -199,18 +215,25 @@ def main():
     mode = args.mode
     stems = STEM_MODES[mode]
 
-    print(f"Processing: {args.url}")
+    source = args.url if args.url else args.file
+    print(f"Processing: {source}")
     print(f"Output directory: {output_dir}")
     print(f"Separation mode: {mode} ({', '.join(stems)})\n")
 
     remove_dir(output_dir)
 
-    with Spinner("Downloading video..."):
-        video_file = download_video(args.url, tmp_dir)
+    mp3_file = os.path.join(tmp_dir, "music.mp3")
 
-    with Spinner("Converting to MP3..."):
-        mp3_file = os.path.join(tmp_dir, "music.mp3")
-        convert_to_mp3(video_file, mp3_file)
+    if args.url:
+        with Spinner("Downloading video..."):
+            video_file = download_video(args.url, tmp_dir)
+
+        with Spinner("Converting to MP3..."):
+            convert_to_mp3(video_file, mp3_file)
+    else:
+        with Spinner("Converting audio file to MP3..."):
+            os.makedirs(tmp_dir, exist_ok=True)
+            convert_to_mp3(args.file, mp3_file)
 
     first_run = not os.path.exists("pretrained_models")
     if first_run:

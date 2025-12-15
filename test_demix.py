@@ -105,6 +105,29 @@ class TestParseArgs:
             args = parse_args()
             assert args.clean == "all"
 
+    def test_file_argument(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3"]):
+            args = parse_args()
+            assert args.file == "/path/to/song.mp3"
+
+    def test_file_argument_long_form(self):
+        with patch.object(sys, "argv", ["demix", "--file", "/path/to/song.wav"]):
+            args = parse_args()
+            assert args.file == "/path/to/song.wav"
+
+    def test_file_with_options(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-m", "4stems", "-t", "0.9"]):
+            args = parse_args()
+            assert args.file == "/path/to/song.mp3"
+            assert args.mode == "4stems"
+            assert args.tempo == 0.9
+
+    def test_no_url_or_file_defaults_to_none(self):
+        with patch.object(sys, "argv", ["demix", "-c", "output"]):
+            args = parse_args()
+            assert args.url is None
+            assert args.file is None
+
 
 class TestSpinner:
     def test_spinner_init(self):

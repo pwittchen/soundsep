@@ -47,6 +47,7 @@ pytest -v
 
 ```
 python demix.py -u <youtube-url> [options]
+python demix.py -f <audio-file> [options]
 ```
 
 ### options
@@ -54,6 +55,7 @@ python demix.py -u <youtube-url> [options]
 | Option | Description |
 |--------|-------------|
 | `-u`, `--url` | YouTube video URL to process |
+| `-f`, `--file` | Local audio file to process (mp3, wav, flac, etc.) |
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-t`, `--tempo` | Tempo factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
 | `-m`, `--mode` | Separation mode: `2stems`, `4stems`, or `5stems` (default: `2stems`) |
