@@ -1,6 +1,9 @@
 # demix
 
- [![Version](https://img.shields.io/pypi/v/demix.svg?style=flat-square)](https://pypi.python.org/pypi/demix/)
+ [![version](https://img.shields.io/pypi/v/demix.svg?style=flat-square)](https://pypi.python.org/pypi/demix/)
+ [![build](https://github.com/pwittchen/demix/actions/workflows/build.yml/badge.svg)](https://github.com/pwittchen/demix/actions/workflows/build.yml)
+ [![deploy](https://github.com/pwittchen/demix/actions/workflows/deploy.yml/badge.svg)](https://github.com/pwittchen/demix/actions/workflows/deploy.yml)
+ [![release](https://github.com/pwittchen/demix/actions/workflows/release.yml/badge.svg)](https://github.com/pwittchen/demix/actions/workflows/release.yml)
 
 separates audio from songs into stems (vocals, instruments), transpose music, change tempo, operates on music from youtube video or local file
 
