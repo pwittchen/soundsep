@@ -18,6 +18,12 @@ demix -v
 Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
 If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
 
+## update
+
+```
+pip install demix --upgrade
+```
+
 ## development
 
 prepare environment (replace python path below with your own python3.8 path):
