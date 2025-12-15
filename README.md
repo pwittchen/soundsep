@@ -6,7 +6,7 @@ separates audio from songs into stems (vocals, instruments), transpose music, ch
 
 ## installation
 
-I suggest to create virtualenv for this project to not break system-wide packages installations (replace python path below with your own python3.8 path):
+I suggest to create virtualenv for this project to not break existing system-wide installations (replace python path below with your own python3.8 path):
 
 ```
 brew install virtualenvwrapper
