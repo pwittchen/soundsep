@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demix"
+version = "1.0.0"
+description = "Separate audio into stems (vocals, instruments) using AI-powered Spleeter"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.8,<3.9"
+authors = [
+    {name = "demix contributors"}
+]
+keywords = [
+    "audio",
+    "music",
+    "stem-separation",
+    "vocals",
+    "spleeter",
+    "youtube",
+    "ffmpeg",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Multimedia :: Sound/Audio :: Conversion",
+]
+dependencies = [
+    "pytubefix>=9.3.0",
+    "ffmpeg>=1.4",
+    "spleeter>=2.3.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "flake8>=5.0",
+]
+
+[project.scripts]
+demix = "demix.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/demix"
+Repository = "https://github.com/yourusername/demix"
+Issues = "https://github.com/yourusername/demix/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["src"]
+
+[tool.flake8]
+max-line-length = 127
+max-complexity = 10
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    "venv",
+]
