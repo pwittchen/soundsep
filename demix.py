@@ -146,13 +146,18 @@ def clean(target, output_dir="output"):
 
 
 def parse_args():
+    # Custom formatter with wider help position for better readability
+    class WideHelpFormatter(argparse.RawDescriptionHelpFormatter):
+        def __init__(self, prog):
+            super().__init__(prog, max_help_position=40)
+
     parser = argparse.ArgumentParser(
         prog="demix",
         description="Separate audio into stems (vocals, instruments) from a YouTube video or local audio file.",
         epilog="Examples:\n"
                "  python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems\n"
                "  python demix.py -f /path/to/song.mp3 -m 2stems",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=WideHelpFormatter
     )
     parser.add_argument(
         "-u", "--url",
@@ -188,9 +193,9 @@ def parse_args():
         choices=["2stems", "4stems", "5stems"],
         default="2stems",
         metavar="MODE",
-        help="separation mode: 2stems (vocals/accompaniment),"
-             "4stems (vocals/drums/bass/other),"
-             "5stems (vocals/drums/bass/piano/other)."
+        help="separation mode: 2stems (vocals/accompaniment), "
+             "4stems (vocals/drums/bass/other), "
+             "5stems (vocals/drums/bass/piano/other). "
              "Default: 2stems"
     )
     parser.add_argument(
