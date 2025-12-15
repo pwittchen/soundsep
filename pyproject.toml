@@ -50,9 +50,9 @@ dev = [
 demix = "demix.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/demix"
-Repository = "https://github.com/yourusername/demix"
-Issues = "https://github.com/yourusername/demix/issues"
+Homepage = "https://github.com/pwittchen/demix"
+Repository = "https://github.com/pwittchen/demix"
+Issues = "https://github.com/pwittchen/demix/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
