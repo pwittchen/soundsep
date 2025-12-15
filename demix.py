@@ -12,6 +12,33 @@ __version__ = "1.0.0"
 DEFAULT_VIDEO_RESOLUTION = "1280x720"
 
 
+def parse_time(time_str):
+    """Parse time string in MM:SS or HH:MM:SS format to seconds."""
+    if time_str is None:
+        return None
+    parts = time_str.split(":")
+    if len(parts) == 2:
+        minutes, seconds = parts
+        return int(minutes) * 60 + float(seconds)
+    elif len(parts) == 3:
+        hours, minutes, seconds = parts
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+    else:
+        raise ValueError(f"Invalid time format: {time_str}. Use MM:SS or HH:MM:SS")
+
+
+def format_time(seconds):
+    """Format seconds to MM:SS or HH:MM:SS string."""
+    if seconds is None:
+        return None
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:05.2f}"
+    return f"{minutes}:{secs:05.2f}"
+
+
 class Spinner:
     def __init__(self, message="Loading..."):
         self.message = message
@@ -73,10 +100,14 @@ def download_video(url, output_path):
     return os.path.join(output_path, filename)
 
 
-def convert_to_mp3(input_file, output_file):
-    subprocess.run([
-        "ffmpeg", "-i", input_file, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", output_file
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def convert_to_mp3(input_file, output_file, start_time=None, end_time=None):
+    cmd = ["ffmpeg"]
+    if start_time is not None:
+        cmd.extend(["-ss", str(start_time)])
+    if end_time is not None:
+        cmd.extend(["-to", str(end_time)])
+    cmd.extend(["-i", input_file, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", output_file])
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def convert_wav_to_mp3(input_file, output_file, tempo=1.0, transpose=0):
@@ -163,7 +194,10 @@ def parse_args():
         description="Separate audio into stems (vocals, instruments) from a YouTube video or local audio file.",
         epilog="Examples:\n"
                "  python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems\n"
-               "  python demix.py -f /path/to/song.mp3 -m 2stems",
+               "  python demix.py -f /path/to/song.mp3 -m 2stems\n"
+               "  python demix.py -f song.mp3 -ss 1:30 -to 3:45      # cut from 1:30 to 3:45\n"
+               "  python demix.py -f song.mp3 -ss 0:30               # start from 0:30\n"
+               "  python demix.py -f song.mp3 -to 2:00               # cut first 2 minutes",
         formatter_class=WideHelpFormatter
     )
     parser.add_argument(
@@ -201,6 +235,16 @@ def parse_args():
         default=0,
         metavar="SEMITONES",
         help="transpose pitch by semitones (default: 0, range: -12 to +12, e.g., -5 for 5 semitones down)"
+    )
+    parser.add_argument(
+        "-ss", "--start",
+        metavar="TIME",
+        help="start time for cutting (format: MM:SS or HH:MM:SS, e.g., 1:30 for 1 min 30 sec)"
+    )
+    parser.add_argument(
+        "-to", "--end",
+        metavar="TIME",
+        help="end time for cutting (format: MM:SS or HH:MM:SS, e.g., 3:45 for 3 min 45 sec)"
     )
     parser.add_argument(
         "-m", "--mode",
@@ -244,6 +288,14 @@ def main():
         print(f"Error: File not found: {args.file}")
         return
 
+    # Parse time cutting parameters
+    try:
+        start_time = parse_time(args.start)
+        end_time = parse_time(args.end)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
+
     output_dir = args.output
     tmp_dir = os.path.join(output_dir, "tmp")
     music_dir = os.path.join(output_dir, "music")
@@ -256,22 +308,31 @@ def main():
     source = args.url if args.url else args.file
     print(f"Processing: {source}")
     print(f"Output directory: {output_dir}")
-    print(f"Separation mode: {mode} ({', '.join(stems)})\n")
+    print(f"Separation mode: {mode} ({', '.join(stems)})")
+    if start_time is not None or end_time is not None:
+        cut_info = "Cutting: "
+        if start_time is not None:
+            cut_info += f"from {args.start}"
+        if end_time is not None:
+            cut_info += f" to {args.end}" if start_time else f"to {args.end}"
+        print(cut_info)
+    print()
 
     remove_dir(output_dir)
 
     mp3_file = os.path.join(tmp_dir, "music.mp3")
 
+    cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
     if args.url:
         with Spinner("Downloading video..."):
             video_file = download_video(args.url, tmp_dir)
 
-        with Spinner("Converting to MP3..."):
-            convert_to_mp3(video_file, mp3_file)
+        with Spinner(f"Converting to MP3{cut_msg}..."):
+            convert_to_mp3(video_file, mp3_file, start_time, end_time)
     else:
-        with Spinner("Converting audio file to MP3..."):
+        with Spinner(f"Converting audio file to MP3{cut_msg}..."):
             os.makedirs(tmp_dir, exist_ok=True)
-            convert_to_mp3(args.file, mp3_file)
+            convert_to_mp3(args.file, mp3_file, start_time, end_time)
 
     first_run = not os.path.exists("pretrained_models")
     if first_run:

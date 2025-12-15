@@ -11,6 +11,8 @@ from demix import (
     STEM_MODES,
     Spinner,
     parse_args,
+    parse_time,
+    format_time,
     remove_dir,
     clean,
     convert_wav_to_mp3,
@@ -49,6 +51,57 @@ class TestStemModes:
     def test_all_modes_have_vocals(self):
         for mode, stems in STEM_MODES.items():
             assert "vocals" in stems, f"Mode {mode} should have vocals"
+
+
+class TestParseTime:
+    def test_parse_time_none(self):
+        assert parse_time(None) is None
+
+    def test_parse_time_minutes_seconds(self):
+        assert parse_time("1:30") == 90.0
+
+    def test_parse_time_zero_minutes(self):
+        assert parse_time("0:45") == 45.0
+
+    def test_parse_time_with_decimal_seconds(self):
+        assert parse_time("2:30.5") == 150.5
+
+    def test_parse_time_hours_minutes_seconds(self):
+        assert parse_time("1:30:00") == 5400.0
+
+    def test_parse_time_full_format(self):
+        assert parse_time("1:15:30") == 4530.0
+
+    def test_parse_time_invalid_format(self):
+        with pytest.raises(ValueError) as excinfo:
+            parse_time("invalid")
+        assert "Invalid time format" in str(excinfo.value)
+
+    def test_parse_time_too_many_colons(self):
+        with pytest.raises(ValueError) as excinfo:
+            parse_time("1:2:3:4")
+        assert "Invalid time format" in str(excinfo.value)
+
+
+class TestFormatTime:
+    def test_format_time_none(self):
+        assert format_time(None) is None
+
+    def test_format_time_seconds_only(self):
+        result = format_time(45.0)
+        assert result == "0:45.00"
+
+    def test_format_time_minutes_seconds(self):
+        result = format_time(90.0)
+        assert result == "1:30.00"
+
+    def test_format_time_with_hours(self):
+        result = format_time(3661.5)
+        assert result == "1:01:01.50"
+
+    def test_format_time_zero(self):
+        result = format_time(0)
+        assert result == "0:00.00"
 
 
 class TestParseArgs:
@@ -156,6 +209,48 @@ class TestParseArgs:
             assert args.file == "/path/to/song.mp3"
             assert args.tempo == 0.9
             assert args.transpose == -3
+
+    def test_default_start_end(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
+            args = parse_args()
+            assert args.start is None
+            assert args.end is None
+
+    def test_start_time_short_form(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "1:30"]):
+            args = parse_args()
+            assert args.start == "1:30"
+
+    def test_start_time_long_form(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "--start", "2:00"]):
+            args = parse_args()
+            assert args.start == "2:00"
+
+    def test_end_time_short_form(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-to", "3:45"]):
+            args = parse_args()
+            assert args.end == "3:45"
+
+    def test_end_time_long_form(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "--end", "4:00"]):
+            args = parse_args()
+            assert args.end == "4:00"
+
+    def test_start_and_end_time(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "1:00", "-to", "3:00"]):
+            args = parse_args()
+            assert args.start == "1:00"
+            assert args.end == "3:00"
+
+    def test_file_with_all_options(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-t", "0.8", "-p", "2", "-ss", "0:30", "-to", "2:30", "-m", "4stems"]):
+            args = parse_args()
+            assert args.file == "/path/to/song.mp3"
+            assert args.tempo == 0.8
+            assert args.transpose == 2
+            assert args.start == "0:30"
+            assert args.end == "2:30"
+            assert args.mode == "4stems"
 
 
 class TestSpinner:
@@ -363,6 +458,46 @@ class TestConvertToMp3:
         assert "/output/audio.mp3" in args
         assert "-ar" in args
         assert "44100" in args
+
+    @patch("demix.subprocess.run")
+    def test_convert_to_mp3_without_time_params(self, mock_run):
+        convert_to_mp3("/input/video.mp4", "/output/audio.mp3")
+        args = mock_run.call_args[0][0]
+        assert "-ss" not in args
+        assert "-to" not in args
+
+    @patch("demix.subprocess.run")
+    def test_convert_to_mp3_with_start_time(self, mock_run):
+        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", start_time=90)
+        args = mock_run.call_args[0][0]
+        assert "-ss" in args
+        ss_index = args.index("-ss")
+        assert args[ss_index + 1] == "90"
+        assert "-to" not in args
+
+    @patch("demix.subprocess.run")
+    def test_convert_to_mp3_with_end_time(self, mock_run):
+        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", end_time=180)
+        args = mock_run.call_args[0][0]
+        assert "-to" in args
+        to_index = args.index("-to")
+        assert args[to_index + 1] == "180"
+        assert "-ss" not in args
+
+    @patch("demix.subprocess.run")
+    def test_convert_to_mp3_with_start_and_end_time(self, mock_run):
+        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", start_time=60, end_time=180)
+        args = mock_run.call_args[0][0]
+        assert "-ss" in args
+        assert "-to" in args
+        ss_index = args.index("-ss")
+        to_index = args.index("-to")
+        assert args[ss_index + 1] == "60"
+        assert args[to_index + 1] == "180"
+        # -ss and -to should come before -i for fast seeking
+        i_index = args.index("-i")
+        assert ss_index < i_index
+        assert to_index < i_index
 
 
 class TestSeparateAudio:
@@ -626,3 +761,72 @@ class TestMain:
         captured = capsys.readouterr()
         assert "tempo: 0.8x" in captured.out
         assert "transpose: +3 semitones" in captured.out
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.download_video", return_value="/tmp/output/tmp/video.mp4")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-ss", "1:30", "-to", "3:45"])
+    def test_main_with_time_cutting(
+        self, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+    ):
+        main()
+        # Check that start_time and end_time were passed to convert_to_mp3
+        call_args = mock_convert.call_args[0]
+        assert call_args[2] == 90.0   # start_time (1:30 = 90 seconds)
+        assert call_args[3] == 225.0  # end_time (3:45 = 225 seconds)
+        captured = capsys.readouterr()
+        assert "Cutting: from 1:30 to 3:45" in captured.out
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch("demix.os.path.isfile", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "0:30"])
+    def test_main_with_start_time_only(
+        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+    ):
+        main()
+        call_args = mock_convert.call_args[0]
+        assert call_args[2] == 30.0   # start_time
+        assert call_args[3] is None   # end_time
+        captured = capsys.readouterr()
+        assert "Cutting: from 0:30" in captured.out
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch("demix.os.path.isfile", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-to", "2:00"])
+    def test_main_with_end_time_only(
+        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+    ):
+        main()
+        call_args = mock_convert.call_args[0]
+        assert call_args[2] is None   # start_time
+        assert call_args[3] == 120.0  # end_time (2:00 = 120 seconds)
+        captured = capsys.readouterr()
+        assert "Cutting: to 2:00" in captured.out
+
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.isfile", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "invalid"])
+    def test_main_invalid_time_format(self, mock_isfile, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "Invalid time format" in captured.out
