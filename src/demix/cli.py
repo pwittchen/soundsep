@@ -336,7 +336,7 @@ def main():
     cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
     if args.url:
         with Spinner("Downloading video..."):
-            video_file = download_video(args.url, tmp_dir)
+            video_file = download_video(args.url, video_dir)
 
         with Spinner(f"Converting to MP3{cut_msg}..."):
             convert_to_mp3(video_file, mp3_file, start_time, end_time)
