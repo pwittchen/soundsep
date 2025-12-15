@@ -20,10 +20,10 @@ mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix-cli
 workon demix-cli
 pip install demix
 demix -v
-deactivate demix-cli
 ```
 
-Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
+> [!NOTE]
+> Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
 If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
 
 ## update
@@ -45,8 +45,11 @@ pip install -r requirements.txt
 python demix.py -v
 ```
 
-Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
+> [!NOTE]
+> Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
 If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
+
+## virtualenv
 
 exit virtualenv, when you're done:
 
@@ -56,13 +59,24 @@ deactivate
 
 to activate env again:
 
+for user installation:
+
+```
+workon demix-cli
+```
+
+for dev setup:
+
 ```
 workon demix
 ```
 
+> [!TIP]
+> You can change local names of these envs if you want to.
+
 ## testing
 
-install pytest:
+install `pytest`:
 
 ```
 pip install pytest
