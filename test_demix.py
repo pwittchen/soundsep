@@ -712,9 +712,10 @@ class TestMain:
     @patch("demix.check_ffmpeg", return_value=True)
     @patch("demix.os.path.exists", return_value=True)
     @patch("demix.os.path.isfile", return_value=True)
+    @patch("demix.os.makedirs")
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3"])
     def test_main_file_workflow(
-        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
         mock_convert, mock_separate, mock_wav_convert, mock_mkv
     ):
         main()
@@ -791,9 +792,10 @@ class TestMain:
     @patch("demix.check_ffmpeg", return_value=True)
     @patch("demix.os.path.exists", return_value=True)
     @patch("demix.os.path.isfile", return_value=True)
+    @patch("demix.os.makedirs")
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "0:30"])
     def test_main_with_start_time_only(
-        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
         mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
     ):
         main()
@@ -811,9 +813,10 @@ class TestMain:
     @patch("demix.check_ffmpeg", return_value=True)
     @patch("demix.os.path.exists", return_value=True)
     @patch("demix.os.path.isfile", return_value=True)
+    @patch("demix.os.makedirs")
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-to", "2:00"])
     def test_main_with_end_time_only(
-        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
         mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
     ):
         main()
