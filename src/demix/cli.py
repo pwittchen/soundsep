@@ -372,6 +372,12 @@ def main():
                 args.transpose
             )
 
+    # Apply transformations to the unseparated music file as well
+    if args.tempo != 1.0 or args.transpose != 0:
+        modified_mp3_file = os.path.join(music_dir, "music_modified.mp3")
+        with Spinner(f"Applying effects to original music file ({', '.join(effects)})..."):
+            convert_wav_to_mp3(mp3_file, modified_mp3_file, args.tempo, args.transpose)
+
     # Create video only for 2stems mode (accompaniment = complete music without vocals)
     if mode == "2stems":
         with Spinner("Creating video for accompaniment track..."):
