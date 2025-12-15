@@ -5,6 +5,9 @@ import shutil
 from unittest.mock import patch, MagicMock
 import pytest
 
+# Add src directory to path for development usage
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
 from demix import (
     __version__,
     DEFAULT_VIDEO_RESOLUTION,
