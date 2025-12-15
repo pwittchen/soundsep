@@ -2,6 +2,22 @@
 
 separates audio from songs into stems (vocals, instruments)
 
+## installation
+
+I suggest to create virtualenv for this project to not break system-wide packages installations (replace python path below with your own python3.8 path):
+
+```
+brew install virtualenvwrapper
+brew install ffmpeg
+mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix
+workon demix
+pip install demix
+demix -v
+```
+
+Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
+If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
+
 ## development
 
 prepare environment (replace python path below with your own python3.8 path):
@@ -12,6 +28,7 @@ brew install ffmpeg
 mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix
 workon demix
 pip install -r requirements.txt
+python demix.py -v
 ```
 
 Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
@@ -78,20 +95,20 @@ python demix.py -f <audio-file> [options]
 
 ```bash
 # separate a YouTube video into vocals and accompaniment
-python demix.py -u 'https://www.youtube.com/watch?v=VIDEO_ID'
+demix -u 'https://www.youtube.com/watch?v=VIDEO_ID'
 
 # separate a local file with 4 stems
-python demix.py -f /path/to/song.mp3 -m 4stems
+demix -f /path/to/song.mp3 -m 4stems
 
 # cut audio from 1:30 to 3:45 before separation
-python demix.py -f song.mp3 -ss 1:30 -to 3:45
+demix -f song.mp3 -ss 1:30 -to 3:45
 
 # start from 0:30 (skip intro)
-python demix.py -f song.mp3 -ss 0:30
+demix -f song.mp3 -ss 0:30
 
 # keep only the first 2 minutes
-python demix.py -f song.mp3 -to 2:00
+demix -f song.mp3 -to 2:00
 
 # combine cutting with tempo and transpose
-python demix.py -f song.mp3 -ss 1:00 -to 4:00 -t 0.8 -p -2
+demix -f song.mp3 -ss 1:00 -to 4:00 -t 0.8 -p -2
 ```
