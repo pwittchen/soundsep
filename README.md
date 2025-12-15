@@ -1,6 +1,6 @@
 # soundsep 🎤
 
-separates audio from songs in the YouTube videos into stems (vocals, instruments)
+separates audio from songs into stems (vocals, instruments)
 
 ## development
 
