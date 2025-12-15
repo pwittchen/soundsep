@@ -18,6 +18,8 @@ from demix import (
     separate_audio,
     download_video,
     create_empty_mkv_with_audio,
+    check_ffmpeg,
+    main,
 )
 
 
@@ -423,3 +425,204 @@ class TestCreateEmptyMkvWithAudio:
         args = mock_run.call_args[0][0]
         assert "ffmpeg" in args
         assert DEFAULT_VIDEO_RESOLUTION in str(args)  # default resolution
+
+
+class TestCheckFfmpeg:
+    @patch("demix.shutil.which")
+    def test_check_ffmpeg_all_found(self, mock_which):
+        mock_which.side_effect = lambda x: f"/usr/bin/{x}"
+        result = check_ffmpeg()
+        assert result is True
+        assert mock_which.call_count == 2
+
+    @patch("demix.shutil.which")
+    def test_check_ffmpeg_missing_ffmpeg(self, mock_which, capsys):
+        mock_which.side_effect = lambda x: None if x == "ffmpeg" else f"/usr/bin/{x}"
+        result = check_ffmpeg()
+        assert result is False
+        captured = capsys.readouterr()
+        assert "ffmpeg is not installed" in captured.out
+
+    @patch("demix.shutil.which")
+    def test_check_ffmpeg_missing_ffprobe(self, mock_which, capsys):
+        mock_which.side_effect = lambda x: None if x == "ffprobe" else f"/usr/bin/{x}"
+        result = check_ffmpeg()
+        assert result is False
+        captured = capsys.readouterr()
+        assert "ffprobe is not installed" in captured.out
+
+
+class TestSpinnerStartStop:
+    def test_spinner_start_sets_spinning_true(self):
+        spinner = Spinner("Test")
+        try:
+            spinner.start()
+            assert spinner.spinning is True
+            assert spinner.thread is not None
+            assert spinner.thread.is_alive()
+        finally:
+            spinner.stop()
+
+    def test_spinner_stop_sets_spinning_false(self, capsys):
+        spinner = Spinner("Test")
+        spinner.start()
+        spinner.stop()
+        assert spinner.spinning is False
+        captured = capsys.readouterr()
+        assert "Test" in captured.out
+
+    def test_spinner_stop_success_symbol(self, capsys):
+        spinner = Spinner("Test message")
+        spinner.start()
+        spinner.stop(success=True)
+        captured = capsys.readouterr()
+        assert "✓" in captured.out
+
+    def test_spinner_stop_failure_symbol(self, capsys):
+        spinner = Spinner("Test message")
+        spinner.start()
+        spinner.stop(success=False)
+        captured = capsys.readouterr()
+        assert "✗" in captured.out
+
+
+class TestMain:
+    @patch("demix.clean")
+    @patch.object(sys, "argv", ["demix", "-c", "output"])
+    def test_main_clean_mode(self, mock_clean):
+        main()
+        mock_clean.assert_called_once_with("output", "output")
+
+    @patch("demix.clean")
+    @patch.object(sys, "argv", ["demix", "-c", "models", "-o", "custom_output"])
+    def test_main_clean_with_custom_output(self, mock_clean):
+        main()
+        mock_clean.assert_called_once_with("models", "custom_output")
+
+    @patch("demix.check_ffmpeg", return_value=False)
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
+    def test_main_ffmpeg_not_found(self, mock_check):
+        # Should return early without error
+        main()
+        mock_check.assert_called_once()
+
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix"])
+    def test_main_no_url_or_file(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "--url or --file is required" in captured.out
+
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-f", "/path/to/file.mp3"])
+    def test_main_both_url_and_file(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "--url and --file cannot be used together" in captured.out
+
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-f", "/nonexistent/file.mp3"])
+    def test_main_file_not_found(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "File not found" in captured.out
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.download_video", return_value="/tmp/output/tmp/video.mp4")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)  # pretrained_models exists
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
+    def test_main_url_workflow_2stems(
+        self, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+    ):
+        main()
+        mock_download.assert_called_once()
+        mock_convert.assert_called_once()
+        mock_separate.assert_called_once()
+        # 2stems has 2 stems to convert
+        assert mock_wav_convert.call_count == 2
+        # 2stems mode should create video
+        mock_mkv.assert_called_once()
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.download_video", return_value="/tmp/output/tmp/video.mp4")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-m", "4stems"])
+    def test_main_url_workflow_4stems_no_video(
+        self, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+    ):
+        main()
+        mock_separate.assert_called_once()
+        # 4stems has 4 stems to convert
+        assert mock_wav_convert.call_count == 4
+        # 4stems mode should NOT create video
+        mock_mkv.assert_not_called()
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch("demix.os.path.isfile", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3"])
+    def test_main_file_workflow(
+        self, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+    ):
+        main()
+        # File mode should not call download_video
+        mock_convert.assert_called_once()
+        mock_separate.assert_called_once()
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.download_video", return_value="/tmp/output/tmp/video.mp4")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=False)  # pretrained_models does NOT exist
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
+    def test_main_first_run_message(
+        self, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+    ):
+        main()
+        captured = capsys.readouterr()
+        assert "First run detected" in captured.out
+
+    @patch("demix.create_empty_mkv_with_audio")
+    @patch("demix.convert_wav_to_mp3")
+    @patch("demix.separate_audio")
+    @patch("demix.convert_to_mp3")
+    @patch("demix.download_video", return_value="/tmp/output/tmp/video.mp4")
+    @patch("demix.remove_dir")
+    @patch("demix.check_ffmpeg", return_value=True)
+    @patch("demix.os.path.exists", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-t", "0.8", "-p", "3"])
+    def test_main_with_tempo_and_transpose(
+        self, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+    ):
+        main()
+        # Check that tempo and transpose were passed to convert_wav_to_mp3
+        call_args = mock_wav_convert.call_args_list
+        for call in call_args:
+            assert call[0][2] == 0.8  # tempo
+            assert call[0][3] == 3    # transpose
+        captured = capsys.readouterr()
+        assert "tempo: 0.8x" in captured.out
+        assert "transpose: +3 semitones" in captured.out
