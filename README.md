@@ -1,5 +1,7 @@
 # demix
 
+ [![Version](https://img.shields.io/pypi/v/demix.svg?style=flat-square)](https://pypi.python.org/pypi/demix/)
+
 separates audio from songs into stems (vocals, instruments)
 
 ## installation
