@@ -212,6 +212,12 @@ def main():
         mp3_file = os.path.join(tmp_dir, "music.mp3")
         convert_to_mp3(video_file, mp3_file)
 
+    first_run = not os.path.exists("pretrained_models")
+    if first_run:
+        print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
+        print("  This is a one-time operation (unless you delete models with --clean models).")
+        print("  Subsequent operations will be faster.\n")
+
     with Spinner(f"Separating audio ({mode})..."):
         separate_audio(mp3_file, output_dir, mode)
 
