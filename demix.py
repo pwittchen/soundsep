@@ -47,6 +47,22 @@ class Spinner:
         self.stop(success=exc_type is None)
 
 
+def check_ffmpeg():
+    """Check if ffmpeg and ffprobe are installed and accessible."""
+    if shutil.which("ffmpeg") is None:
+        print("Error: ffmpeg is not installed or not found in PATH.")
+        print("Please install ffmpeg:")
+        print("  macOS:   brew install ffmpeg")
+        print("  Ubuntu:  sudo apt install ffmpeg")
+        print("  Windows: https://ffmpeg.org/download.html")
+        return False
+    if shutil.which("ffprobe") is None:
+        print("Error: ffprobe is not installed or not found in PATH.")
+        print("ffprobe is usually included with ffmpeg. Please reinstall ffmpeg.")
+        return False
+    return True
+
+
 def download_video(url, output_path):
     os.makedirs(output_path, exist_ok=True)
     yt = YouTube(url)
@@ -190,6 +206,9 @@ def main():
 
     if args.clean:
         clean(args.clean, args.output)
+        return
+
+    if not check_ffmpeg():
         return
 
     if not args.url and not args.file:
