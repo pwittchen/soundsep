@@ -308,7 +308,6 @@ def main():
         return
 
     output_dir = args.output
-    tmp_dir = os.path.join(output_dir, "tmp")
     music_dir = os.path.join(output_dir, "music")
     mp3_dir = os.path.join(music_dir, "mp3")
     video_dir = os.path.join(output_dir, "video")
@@ -331,7 +330,7 @@ def main():
 
     remove_dir(output_dir)
 
-    mp3_file = os.path.join(tmp_dir, "music.mp3")
+    mp3_file = os.path.join(music_dir, "music.mp3")
 
     cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
     if args.url:
@@ -339,10 +338,11 @@ def main():
             video_file = download_video(args.url, video_dir)
 
         with Spinner(f"Converting to MP3{cut_msg}..."):
+            os.makedirs(music_dir, exist_ok=True)
             convert_to_mp3(video_file, mp3_file, start_time, end_time)
     else:
         with Spinner(f"Converting audio file to MP3{cut_msg}..."):
-            os.makedirs(tmp_dir, exist_ok=True)
+            os.makedirs(music_dir, exist_ok=True)
             convert_to_mp3(args.file, mp3_file, start_time, end_time)
 
     first_run = not os.path.exists("pretrained_models")

@@ -40,9 +40,9 @@ python demix.py -f <audio-file> [options]
 **Output structure**:
 ```
 output/
-├── tmp/           # Temporary files (raw downloads, intermediates)
-├── music/mp3/     # Final separated stems
-└── video/         # Video containers with accompaniment track
+├── music/         # Extracted audio (music.mp3) and separated wav stems
+│   └── mp3/       # Final separated stems as mp3
+├── video/         # Downloaded video and accompaniment video container
 pretrained_models/ # Cached Spleeter models (~300MB, downloads on first run)
 ```
 
