@@ -31,6 +31,12 @@ workon demix
 
 ## testing
 
+install pytest:
+
+```
+pip install pytest
+```
+
 run all tests (`-v` param for verbose):
 
 ```
