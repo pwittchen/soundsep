@@ -9,10 +9,11 @@ I suggest to create virtualenv for this project to not break system-wide package
 ```
 brew install virtualenvwrapper
 brew install ffmpeg
-mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix
-workon demix
+mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix-cli
+workon demix-cli
 pip install demix
 demix -v
+deactivate demix-cli
 ```
 
 Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
