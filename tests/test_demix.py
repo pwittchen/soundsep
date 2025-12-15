@@ -673,9 +673,10 @@ class TestMain:
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch("demix.cli.os.path.exists", return_value=True)  # pretrained_models exists
+    @patch("demix.cli.os.makedirs")
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
     def test_main_url_workflow_2stems(
-        self, mock_exists, mock_check, mock_remove, mock_download,
+        self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
         mock_convert, mock_separate, mock_wav_convert, mock_mkv
     ):
         main()
@@ -695,9 +696,10 @@ class TestMain:
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-m", "4stems"])
     def test_main_url_workflow_4stems_no_video(
-        self, mock_exists, mock_check, mock_remove, mock_download,
+        self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
         mock_convert, mock_separate, mock_wav_convert, mock_mkv
     ):
         main()
