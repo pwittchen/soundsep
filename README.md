@@ -74,8 +74,8 @@ pytest -v
 ## usage
 
 ```
-python demix.py -u <youtube-url> [options]
-python demix.py -f <audio-file> [options]
+demix -u <youtube-url> [options]
+demix -f <audio-file> [options]
 ```
 
 ### options
