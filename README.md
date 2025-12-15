@@ -2,7 +2,7 @@
 
  [![Version](https://img.shields.io/pypi/v/demix.svg?style=flat-square)](https://pypi.python.org/pypi/demix/)
 
-separates audio from songs into stems (vocals, instruments)
+separates audio from songs into stems (vocals, instruments), transpose music, change tempo, operates on music from youtube video or local file
 
 ## installation
 
