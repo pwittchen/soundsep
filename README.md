@@ -7,6 +7,12 @@
 
 separates audio from songs into stems (vocals, instruments), transpose music, change tempo, operates on music from youtube video or local file
 
+## prerequisites
+
+> [!NOTE]
+> Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
+If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently. In the setup below I also defined separate virtualenvs for user installation `demix-cli` and for development `demix`. It's important to keep them separated if you want to use the app in two modes. If you want to use one mode only, it doesn't really matter as well as the name of the virtualenv.
+
 ## installation
 
 I suggest to create virtualenv for this project to not break existing system-wide installations (replace python path below with your own python3.8 path):
@@ -21,10 +27,6 @@ workon demix-cli
 pip install demix
 demix -v
 ```
-
-> [!NOTE]
-> Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
-If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
 
 ## update
 
@@ -44,10 +46,6 @@ workon demix
 pip install -r requirements.txt
 python demix.py -v
 ```
-
-> [!NOTE]
-> Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
-If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently.
 
 ## virtualenv
 
