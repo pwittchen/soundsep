@@ -100,6 +100,8 @@ use `--dry-run` to preview changes without applying them:
 python bump_version.py 1.0.4 --dry-run
 ```
 
+after setting the version, create git tag with appropriate name, .e.g. `v1.0.4` and push it to the repo
+
 ## usage
 
 ```
