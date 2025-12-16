@@ -86,6 +86,20 @@ run all tests (`-v` param for verbose):
 pytest -v
 ```
 
+## versioning
+
+bump version in `pyproject.toml` and `src/demix/__init__.py`:
+
+```
+python bump_version.py 1.0.4
+```
+
+use `--dry-run` to preview changes without applying them:
+
+```
+python bump_version.py 1.0.4 --dry-run
+```
+
 ## usage
 
 ```
