@@ -11,7 +11,7 @@ separates audio from songs into stems (vocals, instruments), transpose music, ch
 
 > [!NOTE]
 > Please note: I'm using homebrew for installing `virtualenvwrapper` and `ffmpeg`.
-If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently. In the setup below I also defined separate virtualenvs for user installation `demix-cli` and for development `demix`. It's important to keep them separated if you want to use the app in two modes. If you want to use one mode only, it doesn't really matter as well as the name of the virtualenv. In the examples for creating virtualenv below, replace python path below with your own python3.8 path. I'm personally using pyenv for installing various python verions, but you can do it as you wish.
+If you're using another package manager or different operating system than macOS (e.g. Linux), you need to install it differently. In the examples for creating virtualenv below, replace python path below with your own python3.8 path. I'm personally using pyenv for installing various python verions, but you can do it as you wish.
 
 ## installation
 
@@ -20,10 +20,10 @@ I suggest to create virtualenv for this project to not break existing system-wid
 ```
 brew install virtualenvwrapper
 brew install ffmpeg
-mkdir demix-cli
-cd demix-cli
+mkdir demix
+cd demix
 mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix-cli
-workon demix-cli
+workon demix
 pip install demix
 demix -v
 ```
@@ -59,20 +59,9 @@ deactivate
 
 to activate env again:
 
-for user installation:
-
-```
-workon demix-cli
-```
-
-for dev setup:
-
 ```
 workon demix
 ```
-
-> [!TIP]
-> You can change local names of these envs if you want to.
 
 ## testing
 
