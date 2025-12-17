@@ -25,6 +25,8 @@ from demix.cli import (
     download_video,
     create_empty_mkv_with_audio,
     check_ffmpeg,
+    search_youtube,
+    _resolve_search,
 )
 
 __all__ = [
@@ -44,4 +46,6 @@ __all__ = [
     "download_video",
     "create_empty_mkv_with_audio",
     "check_ffmpeg",
+    "search_youtube",
+    "_resolve_search",
 ]

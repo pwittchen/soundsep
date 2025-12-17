@@ -23,6 +23,8 @@ from demix import (  # noqa: E402
     download_video,
     create_empty_mkv_with_audio,
     check_ffmpeg,
+    search_youtube,
+    _resolve_search,
     main,
 )
 
@@ -184,6 +186,28 @@ class TestParseArgs:
             args = parse_args()
             assert args.url is None
             assert args.file is None
+
+    def test_search_argument_short_form(self):
+        with patch.object(sys, "argv", ["demix", "-s", "Queen - Bohemian Rhapsody"]):
+            args = parse_args()
+            assert args.search == "Queen - Bohemian Rhapsody"
+
+    def test_search_argument_long_form(self):
+        with patch.object(sys, "argv", ["demix", "--search", "Artist - Song Name"]):
+            args = parse_args()
+            assert args.search == "Artist - Song Name"
+
+    def test_search_with_options(self):
+        with patch.object(sys, "argv", ["demix", "-s", "Test Query", "-m", "4stems", "-t", "0.9"]):
+            args = parse_args()
+            assert args.search == "Test Query"
+            assert args.mode == "4stems"
+            assert args.tempo == 0.9
+
+    def test_search_defaults_to_none(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
+            args = parse_args()
+            assert args.search is None
 
     def test_default_transpose(self):
         with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
@@ -558,6 +582,77 @@ class TestDownloadVideo:
         assert result == "/output/video.mp4"
 
 
+class TestSearchYoutube:
+    @patch("demix.cli.Search")
+    def test_search_youtube_returns_first_result(self, mock_search):
+        mock_video = MagicMock()
+        mock_video.watch_url = "https://youtube.com/watch?v=abc123"
+        mock_video.title = "Test Song - Test Artist"
+        mock_search.return_value.videos = [mock_video]
+
+        url, title = search_youtube("Test Artist - Test Song")
+
+        mock_search.assert_called_once_with("Test Artist - Test Song")
+        assert url == "https://youtube.com/watch?v=abc123"
+        assert title == "Test Song - Test Artist"
+
+    @patch("demix.cli.Search")
+    def test_search_youtube_no_results(self, mock_search):
+        mock_search.return_value.videos = []
+
+        url, title = search_youtube("nonexistent song xyz")
+
+        assert url is None
+        assert title is None
+
+    @patch("demix.cli.Search")
+    def test_search_youtube_multiple_results_returns_first(self, mock_search):
+        mock_video1 = MagicMock()
+        mock_video1.watch_url = "https://youtube.com/watch?v=first"
+        mock_video1.title = "First Result"
+        mock_video2 = MagicMock()
+        mock_video2.watch_url = "https://youtube.com/watch?v=second"
+        mock_video2.title = "Second Result"
+        mock_search.return_value.videos = [mock_video1, mock_video2]
+
+        url, title = search_youtube("test query")
+
+        assert url == "https://youtube.com/watch?v=first"
+        assert title == "First Result"
+
+
+class TestResolveSearch:
+    @patch("demix.cli.search_youtube")
+    def test_resolve_search_no_search_query(self, mock_search):
+        url, success = _resolve_search(None)
+
+        assert url is None
+        assert success is True
+        mock_search.assert_not_called()
+
+    @patch("demix.cli.search_youtube")
+    def test_resolve_search_success(self, mock_search, capsys):
+        mock_search.return_value = ("https://youtube.com/watch?v=test", "Test Title")
+
+        url, success = _resolve_search("Artist - Song")
+
+        assert success is True
+        assert url == "https://youtube.com/watch?v=test"
+        captured = capsys.readouterr()
+        assert "Found: Test Title" in captured.out
+
+    @patch("demix.cli.search_youtube")
+    def test_resolve_search_no_results(self, mock_search, capsys):
+        mock_search.return_value = (None, None)
+
+        url, success = _resolve_search("nonexistent song")
+
+        assert success is False
+        assert url is None
+        captured = capsys.readouterr()
+        assert "No results found" in captured.out
+
+
 class TestCreateEmptyMkvWithAudio:
     @patch("demix.cli.subprocess.run")
     @patch("demix.cli.subprocess.check_output")
@@ -660,14 +755,35 @@ class TestMain:
     def test_main_no_url_or_file(self, mock_check, capsys):
         main()
         captured = capsys.readouterr()
-        assert "--url or --file is required" in captured.out
+        assert "--url, --search, or --file is required" in captured.out
 
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-f", "/path/to/file.mp3"])
     def test_main_both_url_and_file(self, mock_check, capsys):
         main()
         captured = capsys.readouterr()
-        assert "--url and --file cannot be used together" in captured.out
+        assert "--url, --search, and --file cannot be used together" in captured.out
+
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-s", "Test Query", "-u", "https://test.com"])
+    def test_main_both_search_and_url(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "--url, --search, and --file cannot be used together" in captured.out
+
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-s", "Test Query", "-f", "/path/to/file.mp3"])
+    def test_main_both_search_and_file(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "--url, --search, and --file cannot be used together" in captured.out
+
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-s", "Test", "-u", "https://test.com", "-f", "/path/file.mp3"])
+    def test_main_all_three_sources(self, mock_check, capsys):
+        main()
+        captured = capsys.readouterr()
+        assert "--url, --search, and --file cannot be used together" in captured.out
 
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch.object(sys, "argv", ["demix", "-f", "/nonexistent/file.mp3"])
@@ -851,3 +967,88 @@ class TestMain:
         main()
         captured = capsys.readouterr()
         assert "Invalid time format" in captured.out
+
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.search_youtube", return_value=("https://youtube.com/watch?v=found", "Found Song"))
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-s", "Artist - Song Name"])
+    def test_main_search_workflow(
+        self, mock_makedirs, mock_exists, mock_check, mock_search,
+        mock_remove, mock_download, mock_convert_wav, mock_separate,
+        mock_wav_to_mp3, mock_mkv, capsys
+    ):
+        main()
+        # Verify search was called with query
+        mock_search.assert_called_once_with("Artist - Song Name")
+        # Verify download was called with the found URL
+        mock_download.assert_called_once()
+        download_url = mock_download.call_args[0][0]
+        assert download_url == "https://youtube.com/watch?v=found"
+        # Check output shows found title
+        captured = capsys.readouterr()
+        assert "Found: Found Song" in captured.out
+
+    @patch("demix.cli.search_youtube", return_value=(None, None))
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch.object(sys, "argv", ["demix", "-s", "nonexistent song xyz"])
+    def test_main_search_no_results(self, mock_check, mock_search, capsys):
+        main()
+        mock_search.assert_called_once_with("nonexistent song xyz")
+        captured = capsys.readouterr()
+        assert "No results found" in captured.out
+
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.search_youtube", return_value=("https://youtube.com/watch?v=test", "Test Song"))
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-s", "Test Query", "-m", "4stems"])
+    def test_main_search_workflow_4stems(
+        self, mock_makedirs, mock_exists, mock_check, mock_search,
+        mock_remove, mock_download, mock_convert_wav, mock_separate,
+        mock_wav_to_mp3, mock_mkv
+    ):
+        main()
+        mock_search.assert_called_once_with("Test Query")
+        mock_separate.assert_called_once()
+        # 4stems has 4 stems to convert + 1 for music.wav to music.mp3
+        assert mock_wav_to_mp3.call_count == 5
+        # 4stems mode should NOT create video
+        mock_mkv.assert_not_called()
+
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.search_youtube", return_value=("https://youtube.com/watch?v=test", "Test Song"))
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-s", "Test", "-ss", "1:00", "-to", "2:30", "-t", "0.9"])
+    def test_main_search_with_options(
+        self, mock_makedirs, mock_exists, mock_check, mock_search,
+        mock_remove, mock_download, mock_convert_wav, mock_separate,
+        mock_wav_to_mp3, mock_mkv, capsys
+    ):
+        main()
+        mock_search.assert_called_once_with("Test")
+        # Check time cutting was passed
+        call_args = mock_convert_wav.call_args[0]
+        assert call_args[2] == 60.0   # start_time
+        assert call_args[3] == 150.0  # end_time
+        captured = capsys.readouterr()
+        assert "Cutting: from 1:00 to 2:30" in captured.out

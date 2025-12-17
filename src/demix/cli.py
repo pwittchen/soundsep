@@ -8,7 +8,7 @@ import sys
 import threading
 import itertools
 import time
-from pytubefix import YouTube
+from pytubefix import YouTube, Search
 
 
 def get_version():
@@ -21,6 +21,12 @@ def get_version():
 
 
 DEFAULT_VIDEO_RESOLUTION = "1280x720"
+
+STEM_MODES = {
+    "2stems": ["vocals", "accompaniment"],
+    "4stems": ["vocals", "drums", "bass", "other"],
+    "5stems": ["vocals", "drums", "bass", "piano", "other"],
+}
 
 
 def parse_time(time_str):
@@ -101,6 +107,16 @@ def check_ffmpeg():
     return True
 
 
+def search_youtube(query):
+    """Search YouTube and return the URL of the first video result."""
+    results = Search(query)
+    videos = list(results.videos)
+    if not videos:
+        return None, None
+    video = videos[0]
+    return video.watch_url, video.title
+
+
 def download_video(url, output_path):
     os.makedirs(output_path, exist_ok=True)
     yt = YouTube(url)
@@ -147,13 +163,6 @@ def convert_wav_to_mp3(input_file, output_file, tempo=1.0, transpose=0):
         cmd.extend(["-af", ",".join(filters)])
     cmd.extend(["-b:a", "192k", output_file])
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-
-STEM_MODES = {
-    "2stems": ["vocals", "accompaniment"],
-    "4stems": ["vocals", "drums", "bass", "other"],
-    "5stems": ["vocals", "drums", "bass", "piano", "other"],
-}
 
 
 def separate_audio(mp3_file, output_folder, mode="2stems"):
@@ -208,6 +217,7 @@ def parse_args():
         description="Separate audio into stems (vocals, instruments) from a YouTube video or local audio file.",
         epilog="Examples:\n"
                "  demix -u 'https://www.youtube.com/watch?v=VIDEO_ID' -m 4stems\n"
+               "  demix -s 'Queen - Bohemian Rhapsody' -m 4stems\n"
                "  demix -f /path/to/song.mp3 -m 2stems\n"
                "  demix -f song.mp3 -ss 1:30 -to 3:45      # cut from 1:30 to 3:45\n"
                "  demix -f song.mp3 -ss 0:30               # start from 0:30\n"
@@ -218,6 +228,11 @@ def parse_args():
         "-u", "--url",
         metavar="URL",
         help="YouTube video URL to process"
+    )
+    parser.add_argument(
+        "-s", "--search",
+        metavar="QUERY",
+        help="search YouTube for a song (e.g., 'Artist - Song Name')"
     )
     parser.add_argument(
         "-f", "--file",
@@ -280,10 +295,11 @@ def parse_args():
 
 def _validate_args(args):
     """Validate command line arguments. Returns error message or None."""
-    if not args.url and not args.file:
-        return "Error: --url or --file is required when not using --clean"
-    if args.url and args.file:
-        return "Error: --url and --file cannot be used together"
+    sources = sum([bool(args.url), bool(args.search), bool(args.file)])
+    if sources == 0:
+        return "Error: --url, --search, or --file is required when not using --clean"
+    if sources > 1:
+        return "Error: --url, --search, and --file cannot be used together"
     if args.file and not os.path.isfile(args.file):
         return f"Error: File not found: {args.file}"
     return None
@@ -300,38 +316,50 @@ def _setup_directories(output_dir):
     }
 
 
-def _print_info(args, stems, start_time, end_time):
+def _resolve_search(search_query):
+    """If search query provided, search YouTube and return the URL."""
+    if not search_query:
+        return None, True
+    with Spinner(f"Searching YouTube for '{search_query}'..."):
+        url, title = search_youtube(search_query)
+    if not url:
+        print(f"Error: No results found for '{search_query}'")
+        return None, False
+    print(f"Found: {title}")
+    return url, True
+
+
+def _print_info(source, output_dir, mode, stems, start_time, end_time, start_str, end_str):
     """Print processing information."""
-    source = args.url if args.url else args.file
     print(f"Processing: {source}")
-    print(f"Output directory: {args.output}")
-    print(f"Separation mode: {args.mode} ({', '.join(stems)})")
+    print(f"Output directory: {output_dir}")
+    print(f"Separation mode: {mode} ({', '.join(stems)})")
     if start_time is not None or end_time is not None:
         cut_info = "Cutting: "
         if start_time is not None:
-            cut_info += f"from {args.start}"
+            cut_info += f"from {start_str}"
         if end_time is not None:
-            cut_info += f" to {args.end}" if start_time else f"to {args.end}"
+            cut_info += f" to {end_str}" if start_time else f"to {end_str}"
         print(cut_info)
     print()
 
 
-def _convert_source(args, dirs, start_time, end_time):
+def _convert_source(url, local_file, dirs, start_time, end_time):
     """Download (if URL) and convert source to WAV and MP3."""
     wav_file = os.path.join(dirs["wav"], "music.wav")
     mp3_file = os.path.join(dirs["mp3"], "music.mp3")
     cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
 
-    if args.url:
+    if url:
         with Spinner("Downloading video..."):
-            video_file = download_video(args.url, dirs["video"])
+            video_file = download_video(url, dirs["video"])
         with Spinner(f"Converting to WAV{cut_msg}..."):
             os.makedirs(dirs["wav"], exist_ok=True)
             convert_to_wav(video_file, wav_file, start_time, end_time)
     else:
         with Spinner(f"Converting audio file to WAV{cut_msg}..."):
             os.makedirs(dirs["wav"], exist_ok=True)
-            convert_to_wav(args.file, wav_file, start_time, end_time)
+            convert_to_wav(local_file, wav_file, start_time, end_time)
 
     with Spinner("Generating MP3 file..."):
         os.makedirs(dirs["mp3"], exist_ok=True)
@@ -340,14 +368,14 @@ def _convert_source(args, dirs, start_time, end_time):
     return wav_file, mp3_file
 
 
-def _convert_stems(args, dirs, stems):
+def _convert_stems(tempo, transpose, dirs, stems):
     """Convert separated stems to MP3 with optional effects."""
     effects = []
-    if args.tempo != 1.0:
-        effects.append(f"tempo: {args.tempo}x")
-    if args.transpose != 0:
-        sign = "+" if args.transpose > 0 else ""
-        effects.append(f"transpose: {sign}{args.transpose} semitones")
+    if tempo != 1.0:
+        effects.append(f"tempo: {tempo}x")
+    if transpose != 0:
+        sign = "+" if transpose > 0 else ""
+        effects.append(f"transpose: {sign}{transpose} semitones")
 
     convert_msg = "Converting separated tracks to MP3..."
     if effects:
@@ -358,10 +386,39 @@ def _convert_stems(args, dirs, stems):
             convert_wav_to_mp3(
                 os.path.join(dirs["wav"], f"{stem}.wav"),
                 os.path.join(dirs["mp3"], f"{stem}.mp3"),
-                args.tempo,
-                args.transpose
+                tempo,
+                transpose
             )
     return effects
+
+
+def _build_source_description(searched_url, url, search_query, file):
+    """Build source description string for display."""
+    if searched_url:
+        return f"{searched_url} (searched: '{search_query}')"
+    if url:
+        return url
+    return file
+
+
+def _apply_effects_to_original(wav_file, dirs, tempo, transpose, effects):
+    """Apply tempo/transpose effects to original music file if needed."""
+    if tempo == 1.0 and transpose == 0:
+        return
+    modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
+    with Spinner(f"Applying effects to original music file ({', '.join(effects)})..."):
+        convert_wav_to_mp3(wav_file, modified_mp3, tempo, transpose)
+
+
+def _create_accompaniment_video(dirs, mode):
+    """Create video for accompaniment track in 2stems mode."""
+    if mode != "2stems":
+        return
+    with Spinner("Creating video for accompaniment track..."):
+        create_empty_mkv_with_audio(
+            os.path.join(dirs["mp3"], "accompaniment.mp3"),
+            os.path.join(dirs["video"], "accompaniment.mkv"),
+        )
 
 
 def main():
@@ -380,6 +437,14 @@ def main():
         print("Run with --help for usage information")
         return
 
+    # Resolve search to URL if needed (immutable - doesn't modify args)
+    searched_url, success = _resolve_search(args.search)
+    if not success:
+        return
+
+    # Determine the URL to use (from search result or direct input)
+    url = searched_url if searched_url else args.url
+
     try:
         start_time = parse_time(args.start)
         end_time = parse_time(args.end)
@@ -389,11 +454,12 @@ def main():
 
     dirs = _setup_directories(args.output)
     stems = STEM_MODES[args.mode]
+    source = _build_source_description(searched_url, url, args.search, args.file)
 
-    _print_info(args, stems, start_time, end_time)
+    _print_info(source, args.output, args.mode, stems, start_time, end_time, args.start, args.end)
     remove_dir(args.output)
 
-    wav_file, _ = _convert_source(args, dirs, start_time, end_time)
+    wav_file, _ = _convert_source(url, args.file, dirs, start_time, end_time)
 
     if not os.path.exists("pretrained_models"):
         print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
@@ -403,19 +469,9 @@ def main():
     with Spinner(f"Separating audio ({args.mode})..."):
         separate_audio(wav_file, dirs["wav"], args.mode)
 
-    effects = _convert_stems(args, dirs, stems)
-
-    if args.tempo != 1.0 or args.transpose != 0:
-        modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
-        with Spinner(f"Applying effects to original music file ({', '.join(effects)})..."):
-            convert_wav_to_mp3(wav_file, modified_mp3, args.tempo, args.transpose)
-
-    if args.mode == "2stems":
-        with Spinner("Creating video for accompaniment track..."):
-            create_empty_mkv_with_audio(
-                os.path.join(dirs["mp3"], "accompaniment.mp3"),
-                os.path.join(dirs["video"], "accompaniment.mkv"),
-            )
+    effects = _convert_stems(args.tempo, args.transpose, dirs, stems)
+    _apply_effects_to_original(wav_file, dirs, args.tempo, args.transpose, effects)
+    _create_accompaniment_video(dirs, args.mode)
 
     print(f"\n\033[32m✓\033[0m Done! Check the '{args.output}/' directory for results.")
     print(f"  Separated stems: {', '.join(stems)}")

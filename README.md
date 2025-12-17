@@ -108,6 +108,7 @@ after setting the version, create git tag with appropriate name, .e.g. `v1.0.4` 
 
 ```
 demix -u <youtube-url> [options]
+demix -s <search-query> [options]
 demix -f <audio-file> [options]
 ```
 
@@ -116,6 +117,7 @@ demix -f <audio-file> [options]
 | Option | Description |
 |--------|-------------|
 | `-u`, `--url` | YouTube video URL to process |
+| `-s`, `--search` | Search YouTube for a song (e.g., `'Artist - Song Name'`) |
 | `-f`, `--file` | Local audio file to process (mp3, wav, flac, etc.) |
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-t`, `--tempo` | Tempo factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
@@ -140,6 +142,9 @@ demix -f <audio-file> [options]
 ```bash
 # separate a YouTube video into vocals and accompaniment
 demix -u 'https://www.youtube.com/watch?v=VIDEO_ID'
+
+# search YouTube by artist and song name
+demix -s 'Queen - Bohemian Rhapsody' -m 4stems
 
 # separate a local file with 4 stems
 demix -f /path/to/song.mp3 -m 4stems

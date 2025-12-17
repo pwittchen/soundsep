@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-demix is a Python CLI tool that separates audio from songs into individual stems (vocals, instruments) using AI-powered audio processing. It can download from YouTube or process local audio files, apply tempo/pitch adjustments, and cut audio segments.
+demix is a Python CLI tool that separates audio from songs into individual stems (vocals, instruments) using AI-powered audio processing. It can search YouTube by artist/song name, download from YouTube URL, or process local audio files, apply tempo/pitch adjustments, and cut audio segments.
 
 ## Development Commands
 
@@ -24,6 +24,7 @@ flake8 . --max-complexity=10 --max-line-length=127
 
 # Run the tool
 python demix.py -u <youtube-url> [options]
+python demix.py -s <search-query> [options]
 python demix.py -f <audio-file> [options]
 ```
 
@@ -31,11 +32,11 @@ python demix.py -f <audio-file> [options]
 
 **Single-file design**: The entire application is in `demix.py` (~377 lines). It's a wrapper that orchestrates three external tools:
 
-1. **pytubefix** - YouTube downloads
+1. **pytubefix** - YouTube search and downloads
 2. **FFmpeg** - Audio/video conversion and effects (subprocess calls)
 3. **Spleeter** - AI audio separation (subprocess calls to CLI)
 
-**Processing pipeline**: download → convert to MP3 → separate with Spleeter → apply effects (tempo/pitch) → output
+**Processing pipeline**: search (optional) → download → convert to MP3 → separate with Spleeter → apply effects (tempo/pitch) → output
 
 **Output structure**:
 ```

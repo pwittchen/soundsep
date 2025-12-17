@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Modules
-- Core entrypoint: `demix.py` handles CLI parsing, YouTube/audio ingest, FFmpeg conversions, Spleeter stem separation, and output assembly.
+- Core entrypoint: `demix.py` handles CLI parsing, YouTube search/download, audio ingest, FFmpeg conversions, Spleeter stem separation, and output assembly.
 - Tests: `test_demix.py` (pytest + unittest.mock) covers argument parsing, helpers, and workflow wiring; add new tests here.
 - Assets/output: `output/` (contains `music/wav/` for music.wav and separated stems as wav, `music/mp3/` for music.mp3 and separated stems as mp3, `video/` for downloads and accompaniment video; cleaned by `--clean output`), `pretrained_models/` (downloaded once by Spleeter, can be wiped with `--clean models`).
 - Misc: `requirements.txt` (runtime deps), `README.md` (setup/usage), `CLAUDE.md` (project notes).
@@ -10,7 +10,8 @@
 - Create env (example): `mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix && workon demix`.
 - Install deps: `pip install -r requirements.txt` (needs FFmpeg installed on PATH).
 - Run CLI locally:
-  - YouTube: `python demix.py -u "https://youtu.be/ID" -m 4stems -o output`
+  - YouTube URL: `python demix.py -u "https://youtu.be/ID" -m 4stems -o output`
+  - YouTube search: `python demix.py -s "Artist - Song Name" -m 4stems`
   - Local file: `python demix.py -f /path/to/song.wav -ss 0:30 -to 2:00 -t 0.9 -p -2`
 - Tests: `pytest -v` (unit-level, no network/FFmpeg execution due to mocking).
 
