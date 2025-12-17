@@ -41,6 +41,8 @@ prepare environment:
 ```
 brew install virtualenvwrapper
 brew install ffmpeg
+git clone git@github.com:pwittchen/demix.git
+cd demix
 mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix
 workon demix
 pip install -r requirements.txt
