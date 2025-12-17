@@ -111,13 +111,14 @@ def download_video(url, output_path):
     return os.path.join(output_path, filename)
 
 
-def convert_to_mp3(input_file, output_file, start_time=None, end_time=None):
+def convert_to_wav(input_file, output_file, start_time=None, end_time=None):
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
     cmd = ["ffmpeg"]
     if start_time is not None:
         cmd.extend(["-ss", str(start_time)])
     if end_time is not None:
         cmd.extend(["-to", str(end_time)])
-    cmd.extend(["-i", input_file, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", output_file])
+    cmd.extend(["-i", input_file, "-vn", "-ar", "44100", "-ac", "2", output_file])
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -156,8 +157,10 @@ STEM_MODES = {
 
 
 def separate_audio(mp3_file, output_folder, mode="2stems"):
+    os.makedirs(output_folder, exist_ok=True)
     subprocess.run([
-        "spleeter", "separate", "-p", f"spleeter:{mode}", "-o", output_folder, mp3_file
+        "spleeter", "separate", "-p", f"spleeter:{mode}",
+        "-o", output_folder, "-f", "{instrument}.{codec}", mp3_file
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -275,6 +278,92 @@ def parse_args():
     return parser.parse_args()
 
 
+def _validate_args(args):
+    """Validate command line arguments. Returns error message or None."""
+    if not args.url and not args.file:
+        return "Error: --url or --file is required when not using --clean"
+    if args.url and args.file:
+        return "Error: --url and --file cannot be used together"
+    if args.file and not os.path.isfile(args.file):
+        return f"Error: File not found: {args.file}"
+    return None
+
+
+def _setup_directories(output_dir):
+    """Create and return directory paths."""
+    music_dir = os.path.join(output_dir, "music")
+    return {
+        "music": music_dir,
+        "wav": os.path.join(music_dir, "wav"),
+        "mp3": os.path.join(music_dir, "mp3"),
+        "video": os.path.join(output_dir, "video"),
+    }
+
+
+def _print_info(args, stems, start_time, end_time):
+    """Print processing information."""
+    source = args.url if args.url else args.file
+    print(f"Processing: {source}")
+    print(f"Output directory: {args.output}")
+    print(f"Separation mode: {args.mode} ({', '.join(stems)})")
+    if start_time is not None or end_time is not None:
+        cut_info = "Cutting: "
+        if start_time is not None:
+            cut_info += f"from {args.start}"
+        if end_time is not None:
+            cut_info += f" to {args.end}" if start_time else f"to {args.end}"
+        print(cut_info)
+    print()
+
+
+def _convert_source(args, dirs, start_time, end_time):
+    """Download (if URL) and convert source to WAV and MP3."""
+    wav_file = os.path.join(dirs["wav"], "music.wav")
+    mp3_file = os.path.join(dirs["mp3"], "music.mp3")
+    cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
+
+    if args.url:
+        with Spinner("Downloading video..."):
+            video_file = download_video(args.url, dirs["video"])
+        with Spinner(f"Converting to WAV{cut_msg}..."):
+            os.makedirs(dirs["wav"], exist_ok=True)
+            convert_to_wav(video_file, wav_file, start_time, end_time)
+    else:
+        with Spinner(f"Converting audio file to WAV{cut_msg}..."):
+            os.makedirs(dirs["wav"], exist_ok=True)
+            convert_to_wav(args.file, wav_file, start_time, end_time)
+
+    with Spinner("Generating MP3 file..."):
+        os.makedirs(dirs["mp3"], exist_ok=True)
+        convert_wav_to_mp3(wav_file, mp3_file)
+
+    return wav_file, mp3_file
+
+
+def _convert_stems(args, dirs, stems):
+    """Convert separated stems to MP3 with optional effects."""
+    effects = []
+    if args.tempo != 1.0:
+        effects.append(f"tempo: {args.tempo}x")
+    if args.transpose != 0:
+        sign = "+" if args.transpose > 0 else ""
+        effects.append(f"transpose: {sign}{args.transpose} semitones")
+
+    convert_msg = "Converting separated tracks to MP3..."
+    if effects:
+        convert_msg = f"Converting separated tracks to MP3 ({', '.join(effects)})..."
+
+    with Spinner(convert_msg):
+        for stem in stems:
+            convert_wav_to_mp3(
+                os.path.join(dirs["wav"], f"{stem}.wav"),
+                os.path.join(dirs["mp3"], f"{stem}.mp3"),
+                args.tempo,
+                args.transpose
+            )
+    return effects
+
+
 def main():
     args = parse_args()
 
@@ -285,21 +374,12 @@ def main():
     if not check_ffmpeg():
         return
 
-    if not args.url and not args.file:
-        print("Error: --url or --file is required when not using --clean")
+    error = _validate_args(args)
+    if error:
+        print(error)
         print("Run with --help for usage information")
         return
 
-    if args.url and args.file:
-        print("Error: --url and --file cannot be used together")
-        print("Run with --help for usage information")
-        return
-
-    if args.file and not os.path.isfile(args.file):
-        print(f"Error: File not found: {args.file}")
-        return
-
-    # Parse time cutting parameters
     try:
         start_time = parse_time(args.start)
         end_time = parse_time(args.end)
@@ -307,86 +387,37 @@ def main():
         print(f"Error: {e}")
         return
 
-    output_dir = args.output
-    music_dir = os.path.join(output_dir, "music")
-    mp3_dir = os.path.join(music_dir, "mp3")
-    video_dir = os.path.join(output_dir, "video")
+    dirs = _setup_directories(args.output)
+    stems = STEM_MODES[args.mode]
 
-    mode = args.mode
-    stems = STEM_MODES[mode]
+    _print_info(args, stems, start_time, end_time)
+    remove_dir(args.output)
 
-    source = args.url if args.url else args.file
-    print(f"Processing: {source}")
-    print(f"Output directory: {output_dir}")
-    print(f"Separation mode: {mode} ({', '.join(stems)})")
-    if start_time is not None or end_time is not None:
-        cut_info = "Cutting: "
-        if start_time is not None:
-            cut_info += f"from {args.start}"
-        if end_time is not None:
-            cut_info += f" to {args.end}" if start_time else f"to {args.end}"
-        print(cut_info)
-    print()
+    wav_file, _ = _convert_source(args, dirs, start_time, end_time)
 
-    remove_dir(output_dir)
-
-    mp3_file = os.path.join(music_dir, "music.mp3")
-
-    cut_msg = " and cutting" if start_time is not None or end_time is not None else ""
-    if args.url:
-        with Spinner("Downloading video..."):
-            video_file = download_video(args.url, video_dir)
-
-        with Spinner(f"Converting to MP3{cut_msg}..."):
-            os.makedirs(music_dir, exist_ok=True)
-            convert_to_mp3(video_file, mp3_file, start_time, end_time)
-    else:
-        with Spinner(f"Converting audio file to MP3{cut_msg}..."):
-            os.makedirs(music_dir, exist_ok=True)
-            convert_to_mp3(args.file, mp3_file, start_time, end_time)
-
-    first_run = not os.path.exists("pretrained_models")
-    if first_run:
+    if not os.path.exists("pretrained_models"):
         print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
         print("  This is a one-time operation (unless you delete models with --clean models).")
         print("  Subsequent operations will be faster.\n")
 
-    with Spinner(f"Separating audio ({mode})..."):
-        separate_audio(mp3_file, output_dir, mode)
+    with Spinner(f"Separating audio ({args.mode})..."):
+        separate_audio(wav_file, dirs["wav"], args.mode)
 
-    convert_msg = "Converting separated tracks to MP3..."
-    effects = []
-    if args.tempo != 1.0:
-        effects.append(f"tempo: {args.tempo}x")
-    if args.transpose != 0:
-        sign = "+" if args.transpose > 0 else ""
-        effects.append(f"transpose: {sign}{args.transpose} semitones")
-    if effects:
-        convert_msg = f"Converting separated tracks to MP3 ({', '.join(effects)})..."
-    with Spinner(convert_msg):
-        for stem in stems:
-            convert_wav_to_mp3(
-                os.path.join(music_dir, f"{stem}.wav"),
-                os.path.join(mp3_dir, f"{stem}.mp3"),
-                args.tempo,
-                args.transpose
-            )
+    effects = _convert_stems(args, dirs, stems)
 
-    # Apply transformations to the unseparated music file as well
     if args.tempo != 1.0 or args.transpose != 0:
-        modified_mp3_file = os.path.join(music_dir, "music_modified.mp3")
+        modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
         with Spinner(f"Applying effects to original music file ({', '.join(effects)})..."):
-            convert_wav_to_mp3(mp3_file, modified_mp3_file, args.tempo, args.transpose)
+            convert_wav_to_mp3(wav_file, modified_mp3, args.tempo, args.transpose)
 
-    # Create video only for 2stems mode (accompaniment = complete music without vocals)
-    if mode == "2stems":
+    if args.mode == "2stems":
         with Spinner("Creating video for accompaniment track..."):
             create_empty_mkv_with_audio(
-                os.path.join(mp3_dir, "accompaniment.mp3"),
-                os.path.join(video_dir, "accompaniment.mkv"),
+                os.path.join(dirs["mp3"], "accompaniment.mp3"),
+                os.path.join(dirs["video"], "accompaniment.mkv"),
             )
 
-    print(f"\n\033[32m✓\033[0m Done! Check the '{output_dir}/' directory for results.")
+    print(f"\n\033[32m✓\033[0m Done! Check the '{args.output}/' directory for results.")
     print(f"  Separated stems: {', '.join(stems)}")
 
 

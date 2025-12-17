@@ -1,14 +1,13 @@
 import os
 import sys
 import tempfile
-import shutil
 from unittest.mock import patch, MagicMock
 import pytest
 
 # Add src directory to path for development usage
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from demix import (
+from demix import (  # noqa: E402
     __version__,
     DEFAULT_VIDEO_RESOLUTION,
     STEM_MODES,
@@ -19,7 +18,7 @@ from demix import (
     remove_dir,
     clean,
     convert_wav_to_mp3,
-    convert_to_mp3,
+    convert_to_wav,
     separate_audio,
     download_video,
     create_empty_mkv_with_audio,
@@ -246,7 +245,11 @@ class TestParseArgs:
             assert args.end == "3:00"
 
     def test_file_with_all_options(self):
-        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-t", "0.8", "-p", "2", "-ss", "0:30", "-to", "2:30", "-m", "4stems"]):
+        test_argv = [
+            "demix", "-f", "/path/to/song.mp3", "-t", "0.8", "-p", "2",
+            "-ss", "0:30", "-to", "2:30", "-m", "4stems"
+        ]
+        with patch.object(sys, "argv", test_argv):
             args = parse_args()
             assert args.file == "/path/to/song.mp3"
             assert args.tempo == 0.8
@@ -449,29 +452,32 @@ class TestConvertWavToMp3:
         assert filter_chain.index("rubberband") < filter_chain.index("atempo")
 
 
-class TestConvertToMp3:
+class TestConvertToWav:
     @patch("demix.cli.subprocess.run")
-    def test_convert_to_mp3_calls_ffmpeg(self, mock_run):
-        convert_to_mp3("/input/video.mp4", "/output/audio.mp3")
+    @patch("demix.cli.os.makedirs")
+    def test_convert_to_wav_calls_ffmpeg(self, mock_makedirs, mock_run):
+        convert_to_wav("/input/video.mp4", "/output/audio.wav")
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert args[0] == "ffmpeg"
         assert "-i" in args
         assert "/input/video.mp4" in args
-        assert "/output/audio.mp3" in args
+        assert "/output/audio.wav" in args
         assert "-ar" in args
         assert "44100" in args
 
     @patch("demix.cli.subprocess.run")
-    def test_convert_to_mp3_without_time_params(self, mock_run):
-        convert_to_mp3("/input/video.mp4", "/output/audio.mp3")
+    @patch("demix.cli.os.makedirs")
+    def test_convert_to_wav_without_time_params(self, mock_makedirs, mock_run):
+        convert_to_wav("/input/video.mp4", "/output/audio.wav")
         args = mock_run.call_args[0][0]
         assert "-ss" not in args
         assert "-to" not in args
 
     @patch("demix.cli.subprocess.run")
-    def test_convert_to_mp3_with_start_time(self, mock_run):
-        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", start_time=90)
+    @patch("demix.cli.os.makedirs")
+    def test_convert_to_wav_with_start_time(self, mock_makedirs, mock_run):
+        convert_to_wav("/input/video.mp4", "/output/audio.wav", start_time=90)
         args = mock_run.call_args[0][0]
         assert "-ss" in args
         ss_index = args.index("-ss")
@@ -479,8 +485,9 @@ class TestConvertToMp3:
         assert "-to" not in args
 
     @patch("demix.cli.subprocess.run")
-    def test_convert_to_mp3_with_end_time(self, mock_run):
-        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", end_time=180)
+    @patch("demix.cli.os.makedirs")
+    def test_convert_to_wav_with_end_time(self, mock_makedirs, mock_run):
+        convert_to_wav("/input/video.mp4", "/output/audio.wav", end_time=180)
         args = mock_run.call_args[0][0]
         assert "-to" in args
         to_index = args.index("-to")
@@ -488,8 +495,9 @@ class TestConvertToMp3:
         assert "-ss" not in args
 
     @patch("demix.cli.subprocess.run")
-    def test_convert_to_mp3_with_start_and_end_time(self, mock_run):
-        convert_to_mp3("/input/video.mp4", "/output/audio.mp3", start_time=60, end_time=180)
+    @patch("demix.cli.os.makedirs")
+    def test_convert_to_wav_with_start_and_end_time(self, mock_makedirs, mock_run):
+        convert_to_wav("/input/video.mp4", "/output/audio.wav", start_time=60, end_time=180)
         args = mock_run.call_args[0][0]
         assert "-ss" in args
         assert "-to" in args
@@ -505,7 +513,8 @@ class TestConvertToMp3:
 
 class TestSeparateAudio:
     @patch("demix.cli.subprocess.run")
-    def test_separate_audio_default_mode(self, mock_run):
+    @patch("demix.cli.os.makedirs")
+    def test_separate_audio_default_mode(self, mock_makedirs, mock_run):
         separate_audio("/input/music.mp3", "/output")
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
@@ -515,14 +524,16 @@ class TestSeparateAudio:
         assert "spleeter:2stems" in args
 
     @patch("demix.cli.subprocess.run")
-    def test_separate_audio_4stems(self, mock_run):
+    @patch("demix.cli.os.makedirs")
+    def test_separate_audio_4stems(self, mock_makedirs, mock_run):
         separate_audio("/input/music.mp3", "/output", mode="4stems")
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
         assert "spleeter:4stems" in args
 
     @patch("demix.cli.subprocess.run")
-    def test_separate_audio_5stems(self, mock_run):
+    @patch("demix.cli.os.makedirs")
+    def test_separate_audio_5stems(self, mock_makedirs, mock_run):
         separate_audio("/input/music.mp3", "/output", mode="5stems")
         mock_run.assert_called_once()
         args = mock_run.call_args[0][0]
@@ -668,7 +679,7 @@ class TestMain:
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
@@ -677,21 +688,21 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
     def test_main_url_workflow_2stems(
         self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv
     ):
         main()
         mock_download.assert_called_once()
-        mock_convert.assert_called_once()
+        mock_convert_wav.assert_called_once()
         mock_separate.assert_called_once()
-        # 2stems has 2 stems to convert
-        assert mock_wav_convert.call_count == 2
+        # 2stems has 2 stems to convert + 1 for music.wav to music.mp3
+        assert mock_wav_to_mp3.call_count == 3
         # 2stems mode should create video
         mock_mkv.assert_called_once()
 
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
@@ -700,19 +711,19 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-m", "4stems"])
     def test_main_url_workflow_4stems_no_video(
         self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv
     ):
         main()
         mock_separate.assert_called_once()
-        # 4stems has 4 stems to convert
-        assert mock_wav_convert.call_count == 4
+        # 4stems has 4 stems to convert + 1 for music.wav to music.mp3
+        assert mock_wav_to_mp3.call_count == 5
         # 4stems mode should NOT create video
         mock_mkv.assert_not_called()
 
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch("demix.cli.os.path.exists", return_value=True)
@@ -721,17 +732,17 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3"])
     def test_main_file_workflow(
         self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv
     ):
         main()
         # File mode should not call download_video
-        mock_convert.assert_called_once()
+        mock_convert_wav.assert_called_once()
         mock_separate.assert_called_once()
 
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
@@ -739,7 +750,7 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
     def test_main_first_run_message(
         self, mock_exists, mock_check, mock_remove, mock_download,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, capsys
     ):
         main()
         captured = capsys.readouterr()
@@ -748,7 +759,7 @@ class TestMain:
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
@@ -756,12 +767,14 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-t", "0.8", "-p", "3"])
     def test_main_with_tempo_and_transpose(
         self, mock_exists, mock_check, mock_remove, mock_download,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, capsys
     ):
         main()
-        # Check that tempo and transpose were passed to convert_wav_to_mp3
-        call_args = mock_wav_convert.call_args_list
-        for call in call_args:
+        # Check that tempo and transpose were passed to convert_wav_to_mp3 for stem conversions
+        # First call is for music.wav to music.mp3 (no effects), rest are for stems with effects
+        call_args = mock_wav_to_mp3.call_args_list
+        # Skip the first call (music.wav to music.mp3 without effects)
+        for call in call_args[1:]:
             assert call[0][2] == 0.8  # tempo
             assert call[0][3] == 3    # transpose
         captured = capsys.readouterr()
@@ -771,7 +784,7 @@ class TestMain:
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
@@ -779,11 +792,11 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-ss", "1:30", "-to", "3:45"])
     def test_main_with_time_cutting(
         self, mock_exists, mock_check, mock_remove, mock_download,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, capsys
     ):
         main()
-        # Check that start_time and end_time were passed to convert_to_mp3
-        call_args = mock_convert.call_args[0]
+        # Check that start_time and end_time were passed to convert_to_wav
+        call_args = mock_convert_wav.call_args[0]
         assert call_args[2] == 90.0   # start_time (1:30 = 90 seconds)
         assert call_args[3] == 225.0  # end_time (3:45 = 225 seconds)
         captured = capsys.readouterr()
@@ -792,7 +805,7 @@ class TestMain:
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch("demix.cli.os.path.exists", return_value=True)
@@ -801,10 +814,10 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-ss", "0:30"])
     def test_main_with_start_time_only(
         self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, capsys
     ):
         main()
-        call_args = mock_convert.call_args[0]
+        call_args = mock_convert_wav.call_args[0]
         assert call_args[2] == 30.0   # start_time
         assert call_args[3] is None   # end_time
         captured = capsys.readouterr()
@@ -813,7 +826,7 @@ class TestMain:
     @patch("demix.cli.create_empty_mkv_with_audio")
     @patch("demix.cli.convert_wav_to_mp3")
     @patch("demix.cli.separate_audio")
-    @patch("demix.cli.convert_to_mp3")
+    @patch("demix.cli.convert_to_wav")
     @patch("demix.cli.remove_dir")
     @patch("demix.cli.check_ffmpeg", return_value=True)
     @patch("demix.cli.os.path.exists", return_value=True)
@@ -822,10 +835,10 @@ class TestMain:
     @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-to", "2:00"])
     def test_main_with_end_time_only(
         self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
-        mock_convert, mock_separate, mock_wav_convert, mock_mkv, capsys
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, capsys
     ):
         main()
-        call_args = mock_convert.call_args[0]
+        call_args = mock_convert_wav.call_args[0]
         assert call_args[2] is None   # start_time
         assert call_args[3] == 120.0  # end_time (2:00 = 120 seconds)
         captured = capsys.readouterr()

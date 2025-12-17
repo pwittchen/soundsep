@@ -3,7 +3,7 @@
 ## Project Structure & Modules
 - Core entrypoint: `demix.py` handles CLI parsing, YouTube/audio ingest, FFmpeg conversions, Spleeter stem separation, and output assembly.
 - Tests: `test_demix.py` (pytest + unittest.mock) covers argument parsing, helpers, and workflow wiring; add new tests here.
-- Assets/output: `output/` (contains `music/` for extracted audio and stems, `video/` for downloads and accompaniment video; cleaned by `--clean output`), `pretrained_models/` (downloaded once by Spleeter, can be wiped with `--clean models`).
+- Assets/output: `output/` (contains `music/wav/` for music.wav and separated stems as wav, `music/mp3/` for music.mp3 and separated stems as mp3, `video/` for downloads and accompaniment video; cleaned by `--clean output`), `pretrained_models/` (downloaded once by Spleeter, can be wiped with `--clean models`).
 - Misc: `requirements.txt` (runtime deps), `README.md` (setup/usage), `CLAUDE.md` (project notes).
 
 ## Build, Test, and Development
