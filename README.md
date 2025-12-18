@@ -93,6 +93,8 @@ python bump_version.py 1.0.4 --dry-run
 
 after setting the version, create git tag with appropriate name, .e.g. `v1.0.4` and push it to the repo
 
+pushing git tag to the remote repo will trigger automatic package deployment to PyPi via Github Action
+
 ## usage
 
 ```
