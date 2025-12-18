@@ -77,23 +77,9 @@ run all tests (`-v` param for verbose):
 pytest -v
 ```
 
-## versioning
+## versioning and deployment
 
-bump version in `pyproject.toml` and `src/demix/__init__.py`:
-
-```
-python bump_version.py 1.0.4
-```
-
-use `--dry-run` to preview changes without applying them:
-
-```
-python bump_version.py 1.0.4 --dry-run
-```
-
-after setting the version, create git tag with appropriate name, .e.g. `v1.0.4` and push it to the repo
-
-pushing git tag to the remote repo will trigger automatic package deployment to PyPi via Github Action
+When we create and push a new git tag, e.g. `v1.0.4`, `deploy.yml` github action is triggered. It automatically extracts created tag, updates version with `bump_version.py` script, performs git commit and push. After that, deployment of the new package version to PyPi is executed.
 
 ## usage
 
