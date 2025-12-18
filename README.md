@@ -22,7 +22,7 @@ brew install virtualenvwrapper
 brew install ffmpeg
 mkdir demix
 cd demix
-mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix-cli
+mkvirtualenv -p /Users/pw/.pyenv/versions/3.8.16/bin/python demix
 workon demix
 pip install demix
 demix -v
