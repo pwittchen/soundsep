@@ -441,6 +441,23 @@ def _create_accompaniment_video(dirs, mode):
         )
 
 
+def _print_first_run_notice():
+    """Print notice about model download on first run."""
+    if not os.path.exists("pretrained_models"):
+        print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
+        print("  This is a one-time operation (unless you delete models with --clean models).")
+        print("  Subsequent operations will be faster.\n")
+
+
+def _detect_key_after_transpose(dirs, transpose):
+    """Detect and display key after transpose if pitch was changed."""
+    if transpose == 0:
+        return
+    modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
+    if os.path.exists(modified_mp3):
+        _detect_and_display_key(modified_mp3, label="after transpose")
+
+
 def _detect_and_display_key(audio_file, label=None):
     """Detect and display the musical key of the audio file."""
     spinner_msg = "Detecting musical key..."
@@ -497,10 +514,7 @@ def main():
     if args.key:
         _detect_and_display_key(wav_file)
 
-    if not os.path.exists("pretrained_models"):
-        print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
-        print("  This is a one-time operation (unless you delete models with --clean models).")
-        print("  Subsequent operations will be faster.\n")
+    _print_first_run_notice()
 
     with Spinner(f"Separating audio ({args.mode})..."):
         separate_audio(wav_file, dirs["wav"], args.mode)
@@ -508,11 +522,8 @@ def main():
     effects = _convert_stems(args.tempo, args.transpose, dirs, stems)
     _apply_effects_to_original(wav_file, dirs, args.tempo, args.transpose, effects)
 
-    # Detect key again after transpose if pitch was changed
-    if args.key and args.transpose != 0:
-        modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
-        if os.path.exists(modified_mp3):
-            _detect_and_display_key(modified_mp3, label="after transpose")
+    if args.key:
+        _detect_key_after_transpose(dirs, args.transpose)
 
     _create_accompaniment_video(dirs, args.mode)
 
