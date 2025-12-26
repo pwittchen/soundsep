@@ -9,6 +9,7 @@ import threading
 import itertools
 import time
 from pytubefix import YouTube, Search
+import essentia.standard as es
 
 
 def get_version():
@@ -173,6 +174,20 @@ def separate_audio(mp3_file, output_folder, mode="2stems"):
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def detect_key(audio_file):
+    """Detect the musical key of an audio file using Essentia.
+
+    Returns a tuple of (key, scale, strength) where:
+    - key: The detected key (e.g., 'C', 'F#', 'Bb')
+    - scale: 'major' or 'minor'
+    - strength: Confidence score (0.0-1.0)
+    """
+    audio = es.MonoLoader(filename=audio_file)()
+    key_extractor = es.KeyExtractor()
+    key, scale, strength = key_extractor(audio)
+    return key, scale, strength
+
+
 def create_empty_mkv_with_audio(mp3_file, output_file):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     duration_cmd = [
@@ -264,6 +279,11 @@ def parse_args():
         default=0,
         metavar="SEMITONES",
         help="transpose pitch by semitones (default: 0, range: -12 to +12, e.g., -5 for 5 semitones down)"
+    )
+    parser.add_argument(
+        "-k", "--key",
+        action="store_true",
+        help="detect and display the musical key of the audio"
     )
     parser.add_argument(
         "-ss", "--start",
@@ -421,6 +441,19 @@ def _create_accompaniment_video(dirs, mode):
         )
 
 
+def _detect_and_display_key(audio_file, label=None):
+    """Detect and display the musical key of the audio file."""
+    spinner_msg = "Detecting musical key..."
+    if label:
+        spinner_msg = f"Detecting musical key ({label})..."
+    with Spinner(spinner_msg):
+        key, scale, strength = detect_key(audio_file)
+    confidence_pct = int(strength * 100)
+    label_suffix = f" ({label})" if label else ""
+    print(f"\033[34m♪\033[0m Detected key{label_suffix}: {key} {scale} (confidence: {confidence_pct}%)\n")
+    return key, scale, strength
+
+
 def main():
     args = parse_args()
 
@@ -461,6 +494,9 @@ def main():
 
     wav_file, _ = _convert_source(url, args.file, dirs, start_time, end_time)
 
+    if args.key:
+        _detect_and_display_key(wav_file)
+
     if not os.path.exists("pretrained_models"):
         print("\033[33mℹ\033[0m First run detected - Spleeter models will be downloaded (~300MB).")
         print("  This is a one-time operation (unless you delete models with --clean models).")
@@ -471,6 +507,13 @@ def main():
 
     effects = _convert_stems(args.tempo, args.transpose, dirs, stems)
     _apply_effects_to_original(wav_file, dirs, args.tempo, args.transpose, effects)
+
+    # Detect key again after transpose if pitch was changed
+    if args.key and args.transpose != 0:
+        modified_mp3 = os.path.join(dirs["music"], "music_modified.mp3")
+        if os.path.exists(modified_mp3):
+            _detect_and_display_key(modified_mp3, label="after transpose")
+
     _create_accompaniment_video(dirs, args.mode)
 
     print(f"\n\033[32m✓\033[0m Done! Check the '{args.output}/' directory for results.")

@@ -20,6 +20,7 @@ from demix import (  # noqa: E402
     convert_wav_to_mp3,
     convert_to_wav,
     separate_audio,
+    detect_key,
     download_video,
     create_empty_mkv_with_audio,
     check_ffmpeg,
@@ -1052,3 +1053,185 @@ class TestMain:
         assert call_args[3] == 150.0  # end_time
         captured = capsys.readouterr()
         assert "Cutting: from 1:00 to 2:30" in captured.out
+
+
+class TestParseArgsKey:
+    def test_key_default_false(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com"]):
+            args = parse_args()
+            assert args.key is False
+
+    def test_key_short_form(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "-k"]):
+            args = parse_args()
+            assert args.key is True
+
+    def test_key_long_form(self):
+        with patch.object(sys, "argv", ["demix", "-u", "https://test.com", "--key"]):
+            args = parse_args()
+            assert args.key is True
+
+    def test_key_with_other_options(self):
+        with patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-k", "-m", "4stems"]):
+            args = parse_args()
+            assert args.key is True
+            assert args.mode == "4stems"
+
+
+class TestDetectKey:
+    @patch("demix.cli.es.KeyExtractor")
+    @patch("demix.cli.es.MonoLoader")
+    def test_detect_key_returns_tuple(self, mock_mono_loader, mock_key_extractor):
+        # Mock the audio loading
+        mock_audio = MagicMock()
+        mock_mono_loader.return_value = MagicMock(return_value=mock_audio)
+
+        # Mock the key extractor
+        mock_extractor_instance = MagicMock()
+        mock_extractor_instance.return_value = ("C", "major", 0.85)
+        mock_key_extractor.return_value = mock_extractor_instance
+
+        key, scale, strength = detect_key("/path/to/audio.wav")
+
+        assert key == "C"
+        assert scale == "major"
+        assert strength == 0.85
+
+    @patch("demix.cli.es.KeyExtractor")
+    @patch("demix.cli.es.MonoLoader")
+    def test_detect_key_minor(self, mock_mono_loader, mock_key_extractor):
+        mock_audio = MagicMock()
+        mock_mono_loader.return_value = MagicMock(return_value=mock_audio)
+
+        mock_extractor_instance = MagicMock()
+        mock_extractor_instance.return_value = ("A", "minor", 0.72)
+        mock_key_extractor.return_value = mock_extractor_instance
+
+        key, scale, strength = detect_key("/path/to/audio.wav")
+
+        assert key == "A"
+        assert scale == "minor"
+        assert strength == 0.72
+
+    @patch("demix.cli.es.KeyExtractor")
+    @patch("demix.cli.es.MonoLoader")
+    def test_detect_key_sharp(self, mock_mono_loader, mock_key_extractor):
+        mock_audio = MagicMock()
+        mock_mono_loader.return_value = MagicMock(return_value=mock_audio)
+
+        mock_extractor_instance = MagicMock()
+        mock_extractor_instance.return_value = ("F#", "major", 0.91)
+        mock_key_extractor.return_value = mock_extractor_instance
+
+        key, scale, strength = detect_key("/path/to/audio.wav")
+
+        assert key == "F#"
+        assert scale == "major"
+        assert strength == 0.91
+
+
+class TestMainWithKeyDetection:
+    @patch("demix.cli.detect_key", return_value=("G", "major", 0.88))
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test", "-k"])
+    def test_main_with_key_detection(
+        self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, mock_detect_key, capsys
+    ):
+        main()
+        mock_detect_key.assert_called_once()
+        captured = capsys.readouterr()
+        assert "Detected key: G major" in captured.out
+        assert "confidence: 88%" in captured.out
+
+    @patch("demix.cli.detect_key")
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.download_video", return_value="/output/video/video.mp4")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-u", "https://youtube.com/watch?v=test"])
+    def test_main_without_key_flag_skips_detection(
+        self, mock_makedirs, mock_exists, mock_check, mock_remove, mock_download,
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, mock_detect_key
+    ):
+        main()
+        mock_detect_key.assert_not_called()
+
+    @patch("demix.cli.detect_key", return_value=("Bb", "minor", 0.65))
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.path.isfile", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-k"])
+    def test_main_key_detection_with_file_input(
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, mock_detect_key, capsys
+    ):
+        main()
+        mock_detect_key.assert_called_once()
+        captured = capsys.readouterr()
+        assert "Detected key: Bb minor" in captured.out
+        assert "confidence: 65%" in captured.out
+
+    @patch("demix.cli.detect_key", return_value=("C", "major", 0.75))
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.path.isfile", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-k", "-p", "3"])
+    def test_main_key_detection_after_transpose(
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, mock_detect_key, capsys
+    ):
+        """Key detection should run twice when -k and -p are both specified."""
+        main()
+        # Should be called twice: once for original, once after transpose
+        assert mock_detect_key.call_count == 2
+        captured = capsys.readouterr()
+        assert "Detected key: C major" in captured.out
+        assert "Detected key (after transpose): C major" in captured.out
+
+    @patch("demix.cli.detect_key", return_value=("A", "minor", 0.80))
+    @patch("demix.cli.create_empty_mkv_with_audio")
+    @patch("demix.cli.convert_wav_to_mp3")
+    @patch("demix.cli.separate_audio")
+    @patch("demix.cli.convert_to_wav")
+    @patch("demix.cli.remove_dir")
+    @patch("demix.cli.check_ffmpeg", return_value=True)
+    @patch("demix.cli.os.path.exists", return_value=True)
+    @patch("demix.cli.os.path.isfile", return_value=True)
+    @patch("demix.cli.os.makedirs")
+    @patch.object(sys, "argv", ["demix", "-f", "/path/to/song.mp3", "-k", "-p", "0"])
+    def test_main_key_detection_no_transpose_when_zero(
+        self, mock_makedirs, mock_isfile, mock_exists, mock_check, mock_remove,
+        mock_convert_wav, mock_separate, mock_wav_to_mp3, mock_mkv, mock_detect_key, capsys
+    ):
+        """Key detection should run only once when transpose is 0."""
+        main()
+        # Should be called only once since transpose is 0
+        mock_detect_key.assert_called_once()
+        captured = capsys.readouterr()
+        assert "after transpose" not in captured.out
