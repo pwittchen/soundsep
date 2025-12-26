@@ -99,6 +99,7 @@ demix -f <audio-file> [options]
 | `-o`, `--output` | Output directory (default: `output`) |
 | `-t`, `--tempo` | Tempo factor for output audio (default: `1.0`, use `< 1.0` to slow down) |
 | `-p`, `--transpose` | Transpose pitch by semitones (default: `0`, range: `-12` to `+12`) |
+| `-k`, `--key` | Detect and display the musical key of the audio (uses Essentia) |
 | `-ss`, `--start` | Start time for cutting (format: `MM:SS` or `HH:MM:SS`) |
 | `-to`, `--end` | End time for cutting (format: `MM:SS` or `HH:MM:SS`) |
 | `-m`, `--mode` | Separation mode: `2stems`, `4stems`, or `5stems` (default: `2stems`) |
@@ -137,4 +138,10 @@ demix -f song.mp3 -to 2:00
 
 # combine cutting with tempo and transpose
 demix -f song.mp3 -ss 1:00 -to 4:00 -t 0.8 -p -2
+
+# detect musical key of a song
+demix -f song.mp3 -k
+
+# detect key before and after transposing
+demix -f song.mp3 -k -p -3
 ```
