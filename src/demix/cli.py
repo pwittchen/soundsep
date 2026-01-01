@@ -108,6 +108,13 @@ def check_ffmpeg():
     return True
 
 
+def clean_url(url):
+    """Remove backslashes from URL that may be added during terminal pasting."""
+    if url:
+        return url.replace("\\", "")
+    return url
+
+
 def search_youtube(query):
     """Search YouTube and return the URL of the first video result."""
     results = Search(query)
@@ -493,7 +500,8 @@ def main():
         return
 
     # Determine the URL to use (from search result or direct input)
-    url = searched_url if searched_url else args.url
+    # Clean backslashes that may be added during terminal pasting
+    url = searched_url if searched_url else clean_url(args.url)
 
     try:
         start_time = parse_time(args.start)
