@@ -168,6 +168,37 @@ demix -u 'https://www.youtube.com/watch?v=VIDEO_ID' -ss 1:00 -to 3:00 -m nosplit
 demix -f song.mp3 -m 4stems -q
 ```
 
+## memory requirements
+
+Stem separation is by far the most memory-hungry part of demix, and its footprint is not a constant. Spleeter loads the whole track into memory as float32 and holds a complex STFT plus one mask per stem, so peak memory grows linearly with **track length** and with the **number of stems**.
+
+Measured peak RSS (Apple Silicon, native, 44.1 kHz stereo input):
+
+| track length | `2stems` | `4stems` |
+|--------------|----------|----------|
+| 1 min | 1.78 GB | 2.71 GB |
+| 4 min | 4.45 GB | 7.41 GB |
+| 8 min | 7.86 GB | 11.72 GB |
+| 10 min | 10.34 GB | 14.08 GB |
+
+As a rule of thumb:
+
+```
+2stems:  ~0.8 GB + 0.95 GB per minute of audio
+4stems:  ~1.5 GB + 1.25 GB per minute of audio
+```
+
+The constant part is TensorFlow plus the model; everything above it scales with duration. Absolute numbers shift somewhat with the platform and the TensorFlow build, but the slope is the portable part.
+
+Things worth knowing before sizing a machine:
+
+- **The 10-minute row is also the worst case.** Spleeter's own `-d` defaults to 600 seconds and demix does not override it, so a 20-minute track is truncated to its first 10 minutes rather than asking for ~20 GB.
+- **`nosplit` never loads spleeter** and stays around 0.2 GB no matter how long the track is (measured 0.19 GB on a 4-minute file). `5stems` was not measured, but expect it above `4stems`.
+- **On a small machine, cut before separating.** `demix -f song.mp3 -ss 1:00 -to 3:00 -m 2stems` separates a 2-minute window at roughly 2.7 GB instead of the whole track's footprint.
+
+> [!NOTE]
+> On a VPS, size RAM from the table *plus* whatever else runs on the box, and leave real headroom. With no swap configured — the common default on small instances — exceeding available memory is an instant OOM kill rather than a slowdown, and on a single-core machine the reclaim thrashing that precedes it can make the whole box unresponsive.
+
 ## youtube downloads
 
 When given `-u` or `-s`, demix downloads audio with [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) if it's on PATH (`brew install yt-dlp`), falling back to `pytubefix` otherwise.
